@@ -2505,24 +2505,35 @@ updateBackButton('home');
 updateCartButton('home');
 updateDinnerButton('home');
 history.replaceState({ route: 'home' }, '', '#home');
+
+// Safety net: if Firebase never finishes loading/initializing, don't leave
+// people stuck on "Checking sign-in..." with no explanation.
+setTimeout(function(){
+  const statusEl = document.getElementById('authGateStatus');
+  const btnEl = document.getElementById('authGateBtn');
+  if(statusEl && statusEl.textContent.indexOf('Checking') === 0){
+    statusEl.textContent = "This is taking longer than expected. Try reloading the page — if it keeps happening, the page may need a fresh copy (add ?v=2 or similar to the end of the URL).";
+    if(btnEl) btnEl.style.display = 'none';
+  }
+}, 7000);
 </script>
 
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
   import {
     getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
     onAuthStateChanged, signOut
-  } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+  } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
   import {
     getFirestore, doc, getDoc, setDoc, updateDoc, deleteField, increment,
     serverTimestamp, collection, getDocs, addDoc, query, where
-  } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+  } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
   import {
     initializeAppCheck, ReCaptchaV3Provider
-  } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app-check.js";
+  } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app-check.js";
   import {
     getAI, getGenerativeModel, GoogleAIBackend
-  } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-ai.js";
+  } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-ai.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBMVW5l8AizRudMd_9OmckqJ5BdSgvB96A",
