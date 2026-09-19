@@ -642,6 +642,123 @@
     margin-top:2px;
   }
 
+  /* ---------- Add Recipe ---------- */
+  .add-recipe-btn{
+    display:block;
+    width:100%;
+    background:var(--forest);
+    color:var(--paper);
+    border:none;
+    border-radius:8px;
+    padding:13px;
+    font-family:'Karla', sans-serif;
+    font-size:14.5px;
+    font-weight:700;
+    cursor:pointer;
+    margin-bottom:16px;
+  }
+  .add-recipe-btn:hover{ background:var(--forest-deep); }
+
+  .form-field{ margin-bottom:14px; }
+  .form-field label{
+    display:block;
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--ink-soft);
+    margin-bottom:5px;
+  }
+  .form-field input[type="text"],
+  .form-field textarea{
+    width:100%;
+    padding:10px 12px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--card);
+    font-family:'Karla', sans-serif;
+    font-size:14.5px;
+    color:var(--ink);
+    resize:vertical;
+  }
+  .form-field input[type="text"]:focus,
+  .form-field textarea:focus{ outline:none; border-color:var(--forest); }
+  .form-field-row{ display:flex; gap:10px; }
+  .form-field-row .form-field{ flex:1; }
+  .form-checkbox-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:16px;
+    font-size:13.5px;
+    color:var(--ink-soft);
+    font-weight:600;
+  }
+  .form-checkbox-row input{ width:17px; height:17px; accent-color:var(--forest); }
+  .form-save-btn{
+    width:100%;
+    background:var(--forest);
+    color:var(--paper);
+    border:none;
+    border-radius:8px;
+    padding:13px;
+    font-family:'Karla', sans-serif;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .form-save-btn:hover{ background:var(--forest-deep); }
+  .form-save-btn:disabled{ opacity:0.5; cursor:default; }
+  .ai-input-row{
+    display:flex;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .ai-extract-btn{
+    background:var(--gold);
+    color:var(--card);
+    border:none;
+    border-radius:8px;
+    padding:11px 16px;
+    font-family:'Karla', sans-serif;
+    font-size:13.5px;
+    font-weight:700;
+    cursor:pointer;
+    white-space:nowrap;
+    flex-shrink:0;
+  }
+  .ai-extract-btn:disabled{ opacity:0.5; cursor:default; }
+  .ai-status-text{
+    font-size:13px;
+    color:var(--ink-soft);
+    margin-bottom:14px;
+  }
+  .ai-not-configured{
+    font-size:13.5px;
+    color:var(--ink-soft);
+    background:var(--paper-deep);
+    border-radius:8px;
+    padding:14px;
+    line-height:1.5;
+  }
+  .file-input-label{
+    display:block;
+    text-align:center;
+    background:var(--card);
+    border:1px dashed var(--line);
+    border-radius:8px;
+    padding:20px;
+    font-size:13.5px;
+    font-weight:700;
+    color:var(--ink-soft);
+    cursor:pointer;
+    margin-bottom:14px;
+  }
+  .file-input-label:hover{ border-color:var(--forest); }
+  .add-recipe-attrib{
+    font-size:11.5px;
+    color:var(--ink-soft);
+    margin-top:6px;
+  }
+
   /* ---------- Recipe social: rating / favorite / cooked ---------- */
   .recipe-social{
     margin:6px 22px 18px;
@@ -1226,6 +1343,23 @@
   </div>
 </div>
 
+<div id="addRecipeOverlay" class="cart-overlay" onclick="if(event.target===this) window.closeAddRecipe()">
+  <div class="cart-sheet">
+    <div class="cart-sheet-head">
+      <h2 id="addRecipeTitle">Add a Recipe</h2>
+      <button class="cart-close" onclick="window.closeAddRecipe()" aria-label="Close">&times;</button>
+    </div>
+    <div class="search-controls" style="padding-bottom:0;">
+      <div class="search-toggle">
+        <button id="addTabManual" class="search-toggle-btn active" onclick="window.setAddRecipeTab('manual')">Type it in</button>
+        <button id="addTabPhoto" class="search-toggle-btn" onclick="window.setAddRecipeTab('photo')">From a Photo</button>
+        <button id="addTabLink" class="search-toggle-btn" onclick="window.setAddRecipeTab('link')">From a Link</button>
+      </div>
+    </div>
+    <div id="addRecipeSheetBody" class="cart-sheet-body"></div>
+  </div>
+</div>
+
 <div id="searchOverlay" class="search-overlay" onclick="if(event.target===this) closeSearch()">
   <div class="search-sheet">
     <div class="search-sheet-head">
@@ -1454,24 +1588,31 @@
   </div>
 
   <div class="screen" id="screen-recipe-heart-healthy">
+    <button class="add-recipe-btn" onclick="window.openAddRecipe && window.openAddRecipe('heart-healthy')">+ Add Recipe</button>
     <div id="recipe-heart-healthy-content"></div>
   </div>
   <div class="screen" id="screen-recipe-grilled">
+    <button class="add-recipe-btn" onclick="window.openAddRecipe && window.openAddRecipe('grilled')">+ Add Recipe</button>
     <div id="recipe-grilled-content"></div>
   </div>
   <div class="screen" id="screen-recipe-smoker">
+    <button class="add-recipe-btn" onclick="window.openAddRecipe && window.openAddRecipe('smoker')">+ Add Recipe</button>
     <div id="recipe-smoker-content"></div>
   </div>
   <div class="screen" id="screen-recipe-italian">
+    <button class="add-recipe-btn" onclick="window.openAddRecipe && window.openAddRecipe('italian')">+ Add Recipe</button>
     <div id="recipe-italian-content"></div>
   </div>
   <div class="screen" id="screen-recipe-mexican">
+    <button class="add-recipe-btn" onclick="window.openAddRecipe && window.openAddRecipe('mexican')">+ Add Recipe</button>
     <div id="recipe-mexican-content"></div>
   </div>
   <div class="screen" id="screen-recipe-american">
+    <button class="add-recipe-btn" onclick="window.openAddRecipe && window.openAddRecipe('american')">+ Add Recipe</button>
     <div id="recipe-american-content"></div>
   </div>
   <div class="screen" id="screen-recipe-sauces">
+    <button class="add-recipe-btn" onclick="window.openAddRecipe && window.openAddRecipe('sauces')">+ Add Recipe</button>
     <div id="recipe-sauces-content"></div>
   </div>
 
@@ -2287,6 +2428,7 @@ const RECIPE_SCREEN_MAP = {
   'recipe-american': 'american',
   'recipe-sauces': 'sauces'
 };
+window.RECIPE_SCREEN_MAP = RECIPE_SCREEN_MAP;
 
 function goTo(route, fromHistory){
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -2373,8 +2515,14 @@ history.replaceState({ route: 'home' }, '', '#home');
   } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
   import {
     getFirestore, doc, getDoc, setDoc, updateDoc, deleteField, increment,
-    serverTimestamp, collection, getDocs
+    serverTimestamp, collection, getDocs, addDoc, query, where
   } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+  import {
+    initializeAppCheck, ReCaptchaV3Provider
+  } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app-check.js";
+  import {
+    getAI, getGenerativeModel, GoogleAIBackend
+  } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-ai.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBMVW5l8AizRudMd_9OmckqJ5BdSgvB96A",
@@ -2389,6 +2537,25 @@ history.replaceState({ route: 'home' }, '', '#home');
   const auth = getAuth(fbApp);
   const db = getFirestore(fbApp);
   const provider = new GoogleAuthProvider();
+
+  // ---- AI Logic setup (photo/link recipe import) ----
+  // Replace with the reCAPTCHA v3 SITE key from Firebase Console → App Check.
+  const RECAPTCHA_SITE_KEY = "6LesnMQtAAAAAKRHhd1qHKuCCJ6O39UObZpP-wk2";
+  const AI_CONFIGURED = RECAPTCHA_SITE_KEY.indexOf("REPLACE_WITH") === -1;
+  let aiModel = null;
+  if(AI_CONFIGURED){
+    try{
+      initializeAppCheck(fbApp, {
+        provider: new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY),
+        isTokenAutoRefreshEnabled: true
+      });
+      const ai = getAI(fbApp, { backend: new GoogleAIBackend() });
+      aiModel = getGenerativeModel(ai, { model: "gemini-2.5-flash" });
+    } catch(err){
+      console.error("AI Logic setup failed:", err);
+      aiModel = null;
+    }
+  }
 
   let currentUser = null;
   let myFavorites = {};    // { "category:idx": true }
@@ -2480,12 +2647,48 @@ history.replaceState({ route: 'home' }, '', '#home');
     }
   }
 
+  let communityLoaded = false;
+
+  async function loadCommunityRecipes(){
+    if(communityLoaded) return;
+    communityLoaded = true;
+    try{
+      const snap = await getDocs(collection(db, "recipes"));
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        const cat = data.category;
+        if(!cat || !window.RECIPES_DATA || !window.RECIPES_DATA[cat]) return;
+        window.RECIPES_DATA[cat].push({
+          title: data.title || "Untitled recipe",
+          servings: data.servings || "",
+          time: data.time || "",
+          isMeal: !!data.isMeal,
+          ingredients: Array.isArray(data.ingredients) ? data.ingredients : [],
+          steps: Array.isArray(data.steps) ? data.steps : [],
+          _docId: docSnap.id,
+          _addedByName: data.addedByName || ""
+        });
+      });
+    } catch(err){
+      console.error("Couldn't load community recipes:", err);
+    }
+  }
+
   onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     renderAuthUI();
     updateAuthGate(user);
     if(user){
       await loadMyData(user.uid);
+      await loadCommunityRecipes();
+      // Refresh whichever recipe list is currently open so new items appear
+      const screenMap = window.RECIPE_SCREEN_MAP || {};
+      Object.keys(screenMap).forEach(route => {
+        const screenEl = document.getElementById('screen-' + route);
+        if(screenEl && screenEl.classList.contains('active') && window.renderRecipeList){
+          window.renderRecipeList(screenMap[route], route + '-content');
+        }
+      });
     } else {
       myFavorites = {};
       myRatings = {};
@@ -2672,6 +2875,206 @@ history.replaceState({ route: 'home' }, '', '#home');
   };
   window.closeMyHistory = function(){
     document.getElementById('historyOverlay').classList.remove('open');
+  };
+
+  /* ---------- Add Recipe (manual / photo / link) ---------- */
+
+  let addRecipeCategory = null;
+  let addRecipeTab = 'manual';
+
+  window.openAddRecipe = function(category){
+    if(!currentUser){ window.signInGoogle(); return; }
+    addRecipeCategory = category;
+    addRecipeTab = 'manual';
+    document.getElementById('addRecipeTitle').textContent =
+      'Add a Recipe' + (window.categoryLabel ? ' — ' + window.categoryLabel(category) : '');
+    setTabButtons('manual');
+    renderAddRecipeBody();
+    document.getElementById('addRecipeOverlay').classList.add('open');
+  };
+  window.closeAddRecipe = function(){
+    document.getElementById('addRecipeOverlay').classList.remove('open');
+  };
+
+  function setTabButtons(tab){
+    document.getElementById('addTabManual').classList.toggle('active', tab === 'manual');
+    document.getElementById('addTabPhoto').classList.toggle('active', tab === 'photo');
+    document.getElementById('addTabLink').classList.toggle('active', tab === 'link');
+  }
+
+  window.setAddRecipeTab = function(tab){
+    addRecipeTab = tab;
+    setTabButtons(tab);
+    renderAddRecipeBody();
+  };
+
+  function renderAddRecipeBody(){
+    const body = document.getElementById('addRecipeSheetBody');
+    if(addRecipeTab === 'manual'){
+      body.innerHTML = manualFormHTML();
+    } else if(addRecipeTab === 'photo'){
+      body.innerHTML = AI_CONFIGURED
+        ? `<label class="file-input-label" for="recipePhotoInput">Tap to take or choose a photo of the recipe</label>
+           <input id="recipePhotoInput" type="file" accept="image/*" capture="environment" style="display:none;" onchange="window.handleRecipePhoto(this)">
+           <div id="aiStatusText" class="ai-status-text"></div>`
+        : aiNotConfiguredHTML();
+    } else if(addRecipeTab === 'link'){
+      body.innerHTML = AI_CONFIGURED
+        ? `<div class="ai-input-row">
+             <input id="recipeLinkInput" type="text" placeholder="Paste a recipe URL..." style="flex:1; padding:10px 12px; border-radius:8px; border:1px solid var(--line); font-size:14.5px;">
+             <button class="ai-extract-btn" onclick="window.extractRecipeFromLink()">Extract</button>
+           </div>
+           <div id="aiStatusText" class="ai-status-text"></div>`
+        : aiNotConfiguredHTML();
+    }
+  }
+
+  function aiNotConfiguredHTML(){
+    return `<div class="ai-not-configured">AI import isn't finished setting up yet — the Firebase project needs App Check configured first. In the meantime, use "Type it in" to add this recipe.</div>`;
+  }
+
+  function manualFormHTML(prefill){
+    const p = prefill || {};
+    const ingredientsText = (p.ingredients || []).join('\n');
+    const stepsText = (p.steps || []).join('\n');
+    return `
+      <div class="form-field">
+        <label>Title</label>
+        <input type="text" id="draftTitle" value="${(p.title || '').replace(/"/g, '&quot;')}" placeholder="Recipe title">
+      </div>
+      <div class="form-field-row">
+        <div class="form-field">
+          <label>Servings</label>
+          <input type="text" id="draftServings" value="${(p.servings || '').replace(/"/g, '&quot;')}" placeholder="e.g. 4–6">
+        </div>
+        <div class="form-field">
+          <label>Time</label>
+          <input type="text" id="draftTime" value="${(p.time || '').replace(/"/g, '&quot;')}" placeholder="e.g. 1 hour">
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Ingredients (one per line)</label>
+        <textarea id="draftIngredients" rows="6">${ingredientsText}</textarea>
+      </div>
+      <div class="form-field">
+        <label>Steps (one per line)</label>
+        <textarea id="draftSteps" rows="6">${stepsText}</textarea>
+      </div>
+      <div class="form-checkbox-row">
+        <input type="checkbox" id="draftMeal" ${p.isMeal ? 'checked' : ''}>
+        <label for="draftMeal" style="margin:0;">Include in the random weekly dinner picker (Meal)</label>
+      </div>
+      <button class="form-save-btn" onclick="window.submitAddRecipe()">Save Recipe</button>
+    `;
+  }
+
+  async function fileToBase64(file){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function parseAIRecipeJSON(text){
+    let clean = text.trim();
+    clean = clean.replace(/^```json/i, '').replace(/^```/, '').replace(/```$/, '').trim();
+    const parsed = JSON.parse(clean);
+    return {
+      title: parsed.title || '',
+      servings: parsed.servings || '',
+      time: parsed.time || '',
+      ingredients: Array.isArray(parsed.ingredients) ? parsed.ingredients : [],
+      steps: Array.isArray(parsed.steps) ? parsed.steps : []
+    };
+  }
+
+  const EXTRACTION_PROMPT = `Extract this recipe. Return ONLY valid JSON, no markdown formatting, no code fences, no commentary — exactly this shape:
+{"title": string, "servings": string, "time": string, "ingredients": string[], "steps": string[]}
+Ingredients and steps should read naturally, without numbering. If a field truly isn't available, use an empty string or empty array.`;
+
+  window.handleRecipePhoto = async function(inputEl){
+    const file = inputEl.files && inputEl.files[0];
+    if(!file || !aiModel) return;
+    const status = document.getElementById('aiStatusText');
+    status.textContent = 'Reading the photo…';
+    try{
+      const base64 = await fileToBase64(file);
+      const result = await aiModel.generateContent([
+        EXTRACTION_PROMPT,
+        { inlineData: { mimeType: file.type || 'image/jpeg', data: base64 } }
+      ]);
+      const text = result.response.text();
+      const draft = parseAIRecipeJSON(text);
+      document.getElementById('addRecipeSheetBody').innerHTML = manualFormHTML(draft);
+    } catch(err){
+      console.error('Photo extraction failed:', err);
+      status.textContent = "Couldn't read that photo — try again, or use \"Type it in\".";
+    }
+  };
+
+  window.extractRecipeFromLink = async function(){
+    const urlInput = document.getElementById('recipeLinkInput');
+    const url = urlInput.value.trim();
+    const status = document.getElementById('aiStatusText');
+    if(!url || !aiModel) return;
+    status.textContent = 'Reading the page…';
+    try{
+      const result = await aiModel.generateContent({
+        contents: [{ role: 'user', parts: [{ text: `${EXTRACTION_PROMPT}\n\nRecipe URL: ${url}` }] }],
+        tools: [{ urlContext: {} }]
+      });
+      const text = result.response.text();
+      const draft = parseAIRecipeJSON(text);
+      document.getElementById('addRecipeSheetBody').innerHTML = manualFormHTML(draft);
+    } catch(err){
+      console.error('Link extraction failed:', err);
+      status.textContent = "Couldn't read that link — try again, or use \"Type it in\".";
+    }
+  };
+
+  window.submitAddRecipe = async function(){
+    if(!currentUser || !addRecipeCategory) return;
+    const title = document.getElementById('draftTitle').value.trim();
+    if(!title){ alert('Please add a title before saving.'); return; }
+
+    const servings = document.getElementById('draftServings').value.trim();
+    const time = document.getElementById('draftTime').value.trim();
+    const isMeal = document.getElementById('draftMeal').checked;
+    const ingredients = document.getElementById('draftIngredients').value.split('\n').map(s => s.trim()).filter(Boolean);
+    const steps = document.getElementById('draftSteps').value.split('\n').map(s => s.trim()).filter(Boolean);
+
+    const saveBtn = document.querySelector('.form-save-btn');
+    if(saveBtn){ saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+
+    try{
+      const docRef = await addDoc(collection(db, "recipes"), {
+        category: addRecipeCategory,
+        title, servings, time, isMeal, ingredients, steps,
+        addedBy: currentUser.uid,
+        addedByName: currentUser.displayName || '',
+        createdAt: serverTimestamp()
+      });
+
+      window.RECIPES_DATA[addRecipeCategory].push({
+        title, servings, time, isMeal, ingredients, steps,
+        _docId: docRef.id,
+        _addedByName: currentUser.displayName || ''
+      });
+
+      window.closeAddRecipe();
+
+      const route = 'recipe-' + addRecipeCategory;
+      const screenEl = document.getElementById('screen-' + route);
+      if(screenEl && screenEl.classList.contains('active') && window.renderRecipeList){
+        window.renderRecipeList(addRecipeCategory, route + '-content');
+      }
+    } catch(err){
+      console.error('Save failed:', err);
+      alert("Couldn't save that recipe — please try again.");
+      if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = 'Save Recipe'; }
+    }
   };
 </script>
 
