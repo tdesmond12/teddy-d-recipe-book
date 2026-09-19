@@ -2581,11 +2581,14 @@ setTimeout(function(){
       await signInWithPopup(auth, provider);
     } catch(err){
       console.error("Sign-in error:", err);
-      if(err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request'){
-        // Fall back to redirect if the popup was blocked (rare in Safari when triggered by a tap)
-        signInWithRedirect(auth, provider);
-      } else if(status){
-        status.textContent = "Sign-in didn't go through — please try again.";
+      if(status){
+        if(err.code === 'auth/popup-blocked'){
+          status.textContent = "Safari blocked the sign-in popup. Go to Settings → Safari → turn OFF \"Block Pop-ups\", then try again.";
+        } else if(err.code === 'auth/cancelled-popup-request' || err.code === 'auth/user-cancelled' || err.code === 'auth/popup-closed-by-user'){
+          status.textContent = "Sign-in was closed before finishing — tap the button to try again.";
+        } else {
+          status.textContent = "Sign-in didn't go through (" + (err.code || 'unknown error') + ") — please try again.";
+        }
       }
     }
   };
