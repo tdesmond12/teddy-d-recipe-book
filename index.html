@@ -759,6 +759,52 @@
     margin-top:6px;
   }
 
+  /* ---------- Visibility badges & owner actions ---------- */
+  .vis-badge{
+    font-size:11px;
+    font-weight:700;
+    padding:3px 9px;
+    border-radius:100px;
+    white-space:nowrap;
+  }
+  .vis-badge.public{ background:rgba(63,92,74,0.12); color:var(--forest-deep); }
+  .vis-badge.private{ background:rgba(163,75,52,0.12); color:var(--rust); }
+  .added-by{
+    font-size:11.5px;
+    color:var(--ink-soft);
+    font-style:italic;
+  }
+  .owner-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    padding:0 22px 18px;
+  }
+  .social-btn.danger{ color:var(--rust); border-color:rgba(163,75,52,0.35); }
+  .social-btn.danger:hover{ background:rgba(163,75,52,0.1); }
+
+  /* ---------- Account menu: view mode + my recipes ---------- */
+  .account-menu-section-label{
+    font-size:10.5px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    color:var(--ink-soft);
+    padding:10px 16px 4px;
+  }
+  .account-menu-item.view-mode-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+  }
+  .account-menu-item .check-mark{
+    color:var(--forest);
+    font-weight:800;
+    visibility:hidden;
+  }
+  .account-menu-item.selected .check-mark{ visibility:visible; }
+
   /* ---------- Recipe social: rating / favorite / cooked ---------- */
   .recipe-social{
     margin:6px 22px 18px;
@@ -1287,7 +1333,7 @@
   // Version check: compares this page against version.txt (fetched fresh,
   // never cached) and force-reloads if they don't match, so updates reach
   // people without needing a manual cache clear.
-  var PAGE_BUILD_VERSION = "2026-09-19-2";
+  var PAGE_BUILD_VERSION = "2026-09-19-3";
   (function(){
     try{
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
@@ -1357,6 +1403,27 @@
 <div id="accountMenu" class="account-menu">
   <button class="account-menu-item" onclick="window.openMyFavorites && window.openMyFavorites()">My Favorites</button>
   <button class="account-menu-item" onclick="window.openMyHistory && window.openMyHistory()">My History</button>
+  <button class="account-menu-item" onclick="window.openMyRecipes && window.openMyRecipes()">My Recipes</button>
+  <div class="account-menu-section-label">Recipe view</div>
+  <button class="account-menu-item view-mode-item" id="viewModePublic" onclick="window.setRecipeViewMode('public')">
+    <span>Public only</span><span class="check-mark">✓</span>
+  </button>
+  <button class="account-menu-item view-mode-item selected" id="viewModeMix" onclick="window.setRecipeViewMode('mix')">
+    <span>Public + Mine</span><span class="check-mark">✓</span>
+  </button>
+  <button class="account-menu-item view-mode-item" id="viewModeMine" onclick="window.setRecipeViewMode('mine')">
+    <span>My Recipes only</span><span class="check-mark">✓</span>
+  </button>
+</div>
+
+<div id="myRecipesOverlay" class="cart-overlay" onclick="if(event.target===this) window.closeMyRecipes()">
+  <div class="cart-sheet">
+    <div class="cart-sheet-head">
+      <h2>My Recipes</h2>
+      <button class="cart-close" onclick="window.closeMyRecipes()" aria-label="Close">&times;</button>
+    </div>
+    <div id="myRecipesSheetBody" class="cart-sheet-body"></div>
+  </div>
 </div>
 
 <div id="favoritesOverlay" class="cart-overlay" onclick="if(event.target===this) window.closeMyFavorites()">
@@ -1939,14 +2006,33 @@ const RECIPES_DATA = {
 };
 window.RECIPES_DATA = RECIPES_DATA;
 
+// Give every built-in recipe a stable id (category:index) plus default
+// visibility/ownership fields. This id format matches what the app already
+// used for ratings/favorites/history keys, so existing saved data isn't affected.
+Object.keys(RECIPES_DATA).forEach(cat => {
+  RECIPES_DATA[cat].forEach((r, i) => {
+    r.id = cat + ':' + i;
+    r.visibility = 'public';
+    r.ownerUid = null; // built-in recipes aren't owned by any user
+  });
+});
+
 function renderRecipeList(category, containerId){
   const container = document.getElementById(containerId);
-  const list = RECIPES_DATA[category] || [];
+  const fullList = RECIPES_DATA[category] || [];
+  const list = fullList.filter(isRecipeVisible);
 
-  if(list.length === 0){
+  if(fullList.length === 0){
     container.innerHTML = `<div class="empty-state">
       <div class="stamp">Recipes coming soon</div>
       <p>This shelf is empty for now — check back as the book grows.</p>
+    </div>`;
+    return;
+  }
+  if(list.length === 0){
+    container.innerHTML = `<div class="empty-state">
+      <div class="stamp">Nothing to show in this view</div>
+      <p>Try a different view from your account menu, or add a recipe here.</p>
     </div>`;
     return;
   }
@@ -1955,14 +2041,23 @@ function renderRecipeList(category, containerId){
     <span class="count">${list.length} recipe${list.length === 1 ? '' : 's'}</span>
   </div>`;
 
-  list.forEach((r, i) => {
+  const uid = window.currentUserUid;
+
+  list.forEach((r) => {
     const metaBits = [];
     if(r.isMeal) metaBits.push('Meal');
     if(r.servings) metaBits.push(`Serves ${r.servings}`);
     if(r.time) metaBits.push(r.time);
     const openAttr = list.length === 1 ? ' open' : '';
+    const domId = 'recipe-' + r.id.replace(':', '-');
+    const socialDomId = 'social-' + r.id.replace(':', '-');
+    const isOwner = !!(uid && r.ownerUid === uid);
+    const isOthersCommunityRecipe = !!(r.ownerUid && !isOwner);
+    const visBadge = r.ownerUid
+      ? `<span class="vis-badge ${r.visibility}">${r.visibility === 'private' ? '🔒 Private' : '🌐 Public'}</span>`
+      : '';
 
-    html += `<details class="recipe-card" id="recipe-${category}-${i}"${openAttr}>
+    html += `<details class="recipe-card" id="${domId}"${openAttr}>
       <summary>
         <span class="rs-text">
           <span class="rs-title">${r.title}</span>
@@ -1974,6 +2069,8 @@ function renderRecipeList(category, containerId){
         <div class="recipe-meta">
           ${r.servings ? `<span>Serves <strong>${r.servings}</strong></span>` : ''}
           ${r.time ? `<span>Time <strong>${r.time}</strong></span>` : ''}
+          ${visBadge}
+          ${r._addedByName ? `<span class="added-by">Added by ${r._addedByName}</span>` : ''}
         </div>
         <div class="recipe-body">
           <h3>Ingredients</h3>
@@ -1983,9 +2080,17 @@ function renderRecipeList(category, containerId){
           ${r.note ? `<p style="font-size:13px; color:var(--ink-soft); font-style:italic; margin-top:14px;">${r.note}</p>` : ''}
         </div>
         ${r.source ? `<div class="recipe-source">Adapted from <a href="${r.sourceUrl}" target="_blank" rel="noopener">${r.source}</a></div>` : ''}
-        <div class="recipe-social" id="social-${category}-${i}" data-key="${category}:${i}">
+        <div class="recipe-social" id="${socialDomId}" data-key="${r.id}">
           <span class="social-signin-hint">Sign in to rate, save, or log this recipe</span>
         </div>
+        ${isOwner ? `<div class="owner-actions">
+          <button class="social-btn" onclick="window.toggleRecipeVisibility('${r.id}')">${r.visibility === 'private' ? '🌐 Make Public' : '🔒 Make Private'}</button>
+          <button class="social-btn" onclick="window.openEditRecipe('${r.id}')">✏️ Edit</button>
+          <button class="social-btn danger" onclick="window.deleteOwnedRecipe('${r.id}')">🗑 Delete</button>
+        </div>` : ''}
+        ${isOthersCommunityRecipe ? `<div class="owner-actions">
+          <button class="social-btn" onclick="window.copyRecipeToMine('${r.id}')">📋 Copy to My Recipes</button>
+        </div>` : ''}
       </div>
     </details>`;
   });
@@ -2054,9 +2159,11 @@ function getVegetablesCategory(){
 
 function getAllRecipesFlat(){
   const out = [];
+  const uid = window.currentUserUid;
   Object.keys(RECIPES_DATA).forEach(cat => {
-    RECIPES_DATA[cat].forEach((r, idx) => {
-      out.push({ key: `${cat}:${idx}`, category: cat, recipe: r });
+    RECIPES_DATA[cat].forEach((r) => {
+      const visible = !r.ownerUid || r.visibility === 'public' || (uid && r.ownerUid === uid);
+      if(visible) out.push({ key: r.id, category: cat, recipe: r });
     });
   });
   return out;
@@ -2074,6 +2181,40 @@ function categoryLabel(cat){
   };
   return map[cat] || cat;
 }
+
+/* ---------- Recipe visibility / view mode ---------- */
+
+let recipeViewMode = 'mix'; // 'public' | 'mix' | 'mine'
+
+function isRecipeVisible(r){
+  if(!r.ownerUid) return true; // built-in — always visible to everyone
+  const uid = window.currentUserUid;
+  const mine = !!(uid && r.ownerUid === uid);
+  if(recipeViewMode === 'mine') return mine;
+  if(recipeViewMode === 'public') return r.visibility === 'public';
+  return r.visibility === 'public' || mine; // 'mix' (default)
+}
+
+window.setRecipeViewMode = function(mode){
+  recipeViewMode = mode;
+  window.updateViewModeMenu(mode);
+  const active = document.querySelector('.screen.active');
+  if(active && active.id && active.id.indexOf('screen-recipe-') === 0){
+    const route = active.id.replace('screen-', '');
+    if(RECIPE_SCREEN_MAP[route]){
+      renderRecipeList(RECIPE_SCREEN_MAP[route], route + '-content');
+    }
+  }
+  if(document.getElementById('accountMenu')) document.getElementById('accountMenu').classList.remove('open');
+};
+
+window.updateViewModeMenu = function(mode){
+  const map = { public: 'viewModePublic', mix: 'viewModeMix', mine: 'viewModeMine' };
+  Object.keys(map).forEach(key => {
+    const el = document.getElementById(map[key]);
+    if(el) el.classList.toggle('selected', key === mode);
+  });
+};
 
 function renderSimpleCheckSection(title, subtitle, category, selectedSet, toggleFnName){
   const itemCount = category ? category.items.length : 0;
@@ -2561,7 +2702,7 @@ setTimeout(function(){
     onAuthStateChanged, signOut
   } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
   import {
-    getFirestore, doc, getDoc, setDoc, updateDoc, deleteField, increment,
+    getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, increment,
     serverTimestamp, collection, getDocs, addDoc, query, where
   } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
   import {
@@ -2705,26 +2846,41 @@ setTimeout(function(){
 
   let communityLoaded = false;
 
+  function addCommunityRecipeToData(docSnap){
+    const data = docSnap.data();
+    const cat = data.category;
+    if(!cat || !window.RECIPES_DATA || !window.RECIPES_DATA[cat]) return;
+    const id = cat + ':f' + docSnap.id;
+    // Skip if already added (a doc can match both the "public" and "mine" queries)
+    if(window.RECIPES_DATA[cat].some(r => r.id === id)) return;
+    window.RECIPES_DATA[cat].push({
+      id,
+      title: data.title || "Untitled recipe",
+      servings: data.servings || "",
+      time: data.time || "",
+      isMeal: !!data.isMeal,
+      ingredients: Array.isArray(data.ingredients) ? data.ingredients : [],
+      steps: Array.isArray(data.steps) ? data.steps : [],
+      visibility: data.visibility || "public",
+      ownerUid: data.addedBy || null,
+      _docId: docSnap.id,
+      _addedByName: data.addedByName || ""
+    });
+  }
+
   async function loadCommunityRecipes(){
     if(communityLoaded) return;
     communityLoaded = true;
+    if(!currentUser) return;
     try{
-      const snap = await getDocs(collection(db, "recipes"));
-      snap.forEach(docSnap => {
-        const data = docSnap.data();
-        const cat = data.category;
-        if(!cat || !window.RECIPES_DATA || !window.RECIPES_DATA[cat]) return;
-        window.RECIPES_DATA[cat].push({
-          title: data.title || "Untitled recipe",
-          servings: data.servings || "",
-          time: data.time || "",
-          isMeal: !!data.isMeal,
-          ingredients: Array.isArray(data.ingredients) ? data.ingredients : [],
-          steps: Array.isArray(data.steps) ? data.steps : [],
-          _docId: docSnap.id,
-          _addedByName: data.addedByName || ""
-        });
-      });
+      // Firestore requires list queries to be provably scoped to match the
+      // security rules — so we run two constrained queries (public recipes,
+      // and my own recipes) instead of one unfiltered fetch-all.
+      const publicQuery = query(collection(db, "recipes"), where("visibility", "==", "public"));
+      const mineQuery = query(collection(db, "recipes"), where("addedBy", "==", currentUser.uid));
+      const [publicSnap, mineSnap] = await Promise.all([getDocs(publicQuery), getDocs(mineQuery)]);
+      publicSnap.forEach(addCommunityRecipeToData);
+      mineSnap.forEach(addCommunityRecipeToData);
     } catch(err){
       console.error("Couldn't load community recipes:", err);
     }
@@ -2732,6 +2888,7 @@ setTimeout(function(){
 
   onAuthStateChanged(auth, async (user) => {
     currentUser = user;
+    window.currentUserUid = user ? user.uid : null;
     renderAuthUI();
     updateAuthGate(user);
     if(user){
@@ -2855,10 +3012,10 @@ setTimeout(function(){
   });
 
   function recipeFromKey(key){
-    const [category, idxStr] = key.split(':');
-    const idx = parseInt(idxStr, 10);
+    const category = key.split(':')[0];
     const list = (window.RECIPES_DATA && window.RECIPES_DATA[category]) || [];
-    return { category, idx, recipe: list[idx] };
+    const recipe = list.find(r => r.id === key);
+    return { category, recipe };
   }
 
   window.goFromAccountList = function(key, closeFn){
@@ -2933,23 +3090,85 @@ setTimeout(function(){
     document.getElementById('historyOverlay').classList.remove('open');
   };
 
+  window.openMyRecipes = function(){
+    closeAccountMenu();
+    const body = document.getElementById('myRecipesSheetBody');
+    if(!currentUser){ body.innerHTML = ''; document.getElementById('myRecipesOverlay').classList.add('open'); return; }
+
+    const mine = [];
+    const data = window.RECIPES_DATA || {};
+    Object.keys(data).forEach(cat => {
+      data[cat].forEach(r => {
+        if(r.ownerUid === currentUser.uid) mine.push({ category: cat, recipe: r });
+      });
+    });
+
+    if(mine.length === 0){
+      body.innerHTML = `<div class="empty-state"><div class="stamp">You haven't added any recipes yet</div><p>Use "+ Add Recipe" on any category page to add one.</p></div>`;
+    } else {
+      const groups = {};
+      mine.forEach(({ category, recipe }) => {
+        const label = window.categoryLabel ? window.categoryLabel(category) : category;
+        if(!groups[label]) groups[label] = [];
+        groups[label].push(recipe);
+      });
+      let html = '';
+      Object.keys(groups).forEach(label => {
+        html += `<div class="fav-group-title">${label}</div>`;
+        groups[label].forEach(recipe => {
+          const badge = recipe.visibility === 'private' ? '🔒 Private' : '🌐 Public';
+          html += `<button class="search-result-row" onclick="window.goFromAccountList('${recipe.id}', window.closeMyRecipes)">
+            <span class="sr-title">${recipe.title}</span>
+            <span class="history-row-meta">${badge}</span>
+          </button>`;
+        });
+      });
+      body.innerHTML = html;
+    }
+    document.getElementById('myRecipesOverlay').classList.add('open');
+  };
+  window.closeMyRecipes = function(){
+    document.getElementById('myRecipesOverlay').classList.remove('open');
+  };
+
   /* ---------- Add Recipe (manual / photo / link) ---------- */
 
   let addRecipeCategory = null;
   let addRecipeTab = 'manual';
+  let editingRecipeId = null;
 
   window.openAddRecipe = function(category){
     if(!currentUser){ window.signInGoogle(); return; }
     addRecipeCategory = category;
     addRecipeTab = 'manual';
+    editingRecipeId = null;
     document.getElementById('addRecipeTitle').textContent =
       'Add a Recipe' + (window.categoryLabel ? ' — ' + window.categoryLabel(category) : '');
     setTabButtons('manual');
+    document.getElementById('addTabPhoto').style.display = '';
+    document.getElementById('addTabLink').style.display = '';
     renderAddRecipeBody();
     document.getElementById('addRecipeOverlay').classList.add('open');
   };
+
+  window.openEditRecipe = function(id){
+    const { category, recipe } = recipeFromKey(id);
+    if(!recipe) return;
+    addRecipeCategory = category;
+    addRecipeTab = 'manual';
+    editingRecipeId = id;
+    document.getElementById('addRecipeTitle').textContent = 'Edit Recipe';
+    setTabButtons('manual');
+    // Editing only makes sense for the form itself — hide the AI import tabs
+    document.getElementById('addTabPhoto').style.display = 'none';
+    document.getElementById('addTabLink').style.display = 'none';
+    document.getElementById('addRecipeSheetBody').innerHTML = manualFormHTML(recipe);
+    document.getElementById('addRecipeOverlay').classList.add('open');
+  };
+
   window.closeAddRecipe = function(){
     document.getElementById('addRecipeOverlay').classList.remove('open');
+    editingRecipeId = null;
   };
 
   function setTabButtons(tab){
@@ -2963,6 +3182,7 @@ setTimeout(function(){
     setTabButtons(tab);
     renderAddRecipeBody();
   };
+
 
   function renderAddRecipeBody(){
     const body = document.getElementById('addRecipeSheetBody');
@@ -3020,9 +3240,23 @@ setTimeout(function(){
         <input type="checkbox" id="draftMeal" ${p.isMeal ? 'checked' : ''}>
         <label for="draftMeal" style="margin:0;">Include in the random weekly dinner picker (Meal)</label>
       </div>
-      <button class="form-save-btn" onclick="window.submitAddRecipe()">Save Recipe</button>
+      <div class="form-field">
+        <label>Who can see this recipe?</label>
+        <div class="search-toggle">
+          <button type="button" id="draftVisPublic" class="search-toggle-btn ${p.visibility !== 'private' ? 'active' : ''}" onclick="window.setDraftVisibility('public')">🌐 Public — everyone</button>
+          <button type="button" id="draftVisPrivate" class="search-toggle-btn ${p.visibility === 'private' ? 'active' : ''}" onclick="window.setDraftVisibility('private')">🔒 Private — just me</button>
+        </div>
+        <input type="hidden" id="draftVisibility" value="${p.visibility === 'private' ? 'private' : 'public'}">
+      </div>
+      <button class="form-save-btn" onclick="window.submitAddRecipe()">${editingRecipeId ? 'Save Changes' : 'Save Recipe'}</button>
     `;
   }
+
+  window.setDraftVisibility = function(val){
+    document.getElementById('draftVisibility').value = val;
+    document.getElementById('draftVisPublic').classList.toggle('active', val === 'public');
+    document.getElementById('draftVisPrivate').classList.toggle('active', val === 'private');
+  };
 
   async function fileToBase64(file){
     return new Promise((resolve, reject) => {
@@ -3101,24 +3335,39 @@ Ingredients and steps should read naturally, without numbering. If a field truly
     const isMeal = document.getElementById('draftMeal').checked;
     const ingredients = document.getElementById('draftIngredients').value.split('\n').map(s => s.trim()).filter(Boolean);
     const steps = document.getElementById('draftSteps').value.split('\n').map(s => s.trim()).filter(Boolean);
+    const visEl = document.getElementById('draftVisibility');
+    const visibility = visEl && visEl.value === 'private' ? 'private' : 'public';
 
     const saveBtn = document.querySelector('.form-save-btn');
     if(saveBtn){ saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
 
     try{
-      const docRef = await addDoc(collection(db, "recipes"), {
-        category: addRecipeCategory,
-        title, servings, time, isMeal, ingredients, steps,
-        addedBy: currentUser.uid,
-        addedByName: currentUser.displayName || '',
-        createdAt: serverTimestamp()
-      });
+      if(editingRecipeId){
+        const { recipe } = recipeFromKey(editingRecipeId);
+        if(!recipe || !recipe._docId) throw new Error('Recipe not found');
+        await updateDoc(doc(db, "recipes", recipe._docId), {
+          title, servings, time, isMeal, ingredients, steps, visibility
+        });
+        recipe.title = title; recipe.servings = servings; recipe.time = time;
+        recipe.isMeal = isMeal; recipe.ingredients = ingredients; recipe.steps = steps;
+        recipe.visibility = visibility;
+      } else {
+        const docRef = await addDoc(collection(db, "recipes"), {
+          category: addRecipeCategory,
+          title, servings, time, isMeal, ingredients, steps, visibility,
+          addedBy: currentUser.uid,
+          addedByName: currentUser.displayName || '',
+          createdAt: serverTimestamp()
+        });
 
-      window.RECIPES_DATA[addRecipeCategory].push({
-        title, servings, time, isMeal, ingredients, steps,
-        _docId: docRef.id,
-        _addedByName: currentUser.displayName || ''
-      });
+        window.RECIPES_DATA[addRecipeCategory].push({
+          id: addRecipeCategory + ':f' + docRef.id,
+          title, servings, time, isMeal, ingredients, steps,
+          visibility, ownerUid: currentUser.uid,
+          _docId: docRef.id,
+          _addedByName: currentUser.displayName || ''
+        });
+      }
 
       window.closeAddRecipe();
 
@@ -3131,6 +3380,76 @@ Ingredients and steps should read naturally, without numbering. If a field truly
       console.error('Save failed:', err);
       alert("Couldn't save that recipe — please try again.");
       if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = 'Save Recipe'; }
+    }
+  };
+
+  function refreshCategoryIfActive(category){
+    const route = 'recipe-' + category;
+    const screenEl = document.getElementById('screen-' + route);
+    if(screenEl && screenEl.classList.contains('active') && window.renderRecipeList){
+      window.renderRecipeList(category, route + '-content');
+    }
+  }
+
+  window.toggleRecipeVisibility = async function(id){
+    if(!currentUser) return;
+    const { category, recipe } = recipeFromKey(id);
+    if(!recipe || recipe.ownerUid !== currentUser.uid || !recipe._docId) return;
+    const newVis = recipe.visibility === 'private' ? 'public' : 'private';
+    try{
+      await updateDoc(doc(db, "recipes", recipe._docId), { visibility: newVis });
+      recipe.visibility = newVis;
+      refreshCategoryIfActive(category);
+    } catch(err){
+      console.error('Visibility toggle failed:', err);
+      alert("Couldn't change that — please try again.");
+    }
+  };
+
+  window.deleteOwnedRecipe = async function(id){
+    if(!currentUser) return;
+    const { category, recipe } = recipeFromKey(id);
+    if(!recipe || recipe.ownerUid !== currentUser.uid || !recipe._docId) return;
+    if(!confirm(`Delete "${recipe.title}"? This can't be undone.`)) return;
+    try{
+      await deleteDoc(doc(db, "recipes", recipe._docId));
+      const list = window.RECIPES_DATA[category];
+      const idx = list.findIndex(r => r.id === id);
+      if(idx !== -1) list.splice(idx, 1);
+      refreshCategoryIfActive(category);
+    } catch(err){
+      console.error('Delete failed:', err);
+      alert("Couldn't delete that recipe — please try again.");
+    }
+  };
+
+  window.copyRecipeToMine = async function(id){
+    if(!currentUser) return;
+    const { category, recipe } = recipeFromKey(id);
+    if(!recipe) return;
+    try{
+      const docRef = await addDoc(collection(db, "recipes"), {
+        category,
+        title: recipe.title, servings: recipe.servings, time: recipe.time,
+        isMeal: recipe.isMeal, ingredients: recipe.ingredients, steps: recipe.steps,
+        visibility: 'private',
+        addedBy: currentUser.uid,
+        addedByName: currentUser.displayName || '',
+        createdAt: serverTimestamp()
+      });
+      window.RECIPES_DATA[category].push({
+        id: category + ':f' + docRef.id,
+        title: recipe.title, servings: recipe.servings, time: recipe.time,
+        isMeal: recipe.isMeal, ingredients: recipe.ingredients.slice(), steps: recipe.steps.slice(),
+        visibility: 'private', ownerUid: currentUser.uid,
+        _docId: docRef.id,
+        _addedByName: currentUser.displayName || ''
+      });
+      refreshCategoryIfActive(category);
+      alert(`"${recipe.title}" was copied to your recipes as private — edit it anytime from there.`);
+    } catch(err){
+      console.error('Copy failed:', err);
+      alert("Couldn't copy that recipe — please try again.");
     }
   };
 </script>
