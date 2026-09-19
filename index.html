@@ -1287,7 +1287,7 @@
   // Version check: compares this page against version.txt (fetched fresh,
   // never cached) and force-reloads if they don't match, so updates reach
   // people without needing a manual cache clear.
-  var PAGE_BUILD_VERSION = "2026-09-19-1";
+  var PAGE_BUILD_VERSION = "2026-09-19-2";
   (function(){
     try{
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
@@ -1303,6 +1303,21 @@
         .catch(function(){ /* offline or file missing — fail silently, don't block the app */ });
     } catch(e){ /* no-op */ }
   })();
+
+  // Easter egg: tap the title 7 times to see this page's build version
+  // (compare it against version.txt to check if a user is on a stale copy).
+  var titleTapCount = 0;
+  var titleTapTimer = null;
+  window.handleTitleTap = function(){
+    titleTapCount++;
+    clearTimeout(titleTapTimer);
+    titleTapTimer = setTimeout(function(){ titleTapCount = 0; }, 1500);
+    if(titleTapCount >= 7){
+      titleTapCount = 0;
+      clearTimeout(titleTapTimer);
+      alert("Build version on this screen:\n" + PAGE_BUILD_VERSION);
+    }
+  };
 </script>
 
 <div id="authGate" class="auth-gate">
@@ -1443,7 +1458,7 @@
 <div class="wrap">
 
   <div class="lid">
-    <div class="lid-label">
+    <div class="lid-label" onclick="window.handleTitleTap && window.handleTitleTap()" style="cursor:pointer;">
       <span class="name">Teddy D's Recipe Book</span>
       <span class="tagline">a running collection, added to as we go</span>
     </div>
