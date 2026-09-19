@@ -363,14 +363,27 @@
     }
   }
 
-  /* ---------- Search button ---------- */
-  #searchBtn{
+  /* ---------- Top-right bar (auth control + search) ---------- */
+  .top-right-bar{
     position:fixed;
     top:16px;
     right:16px;
-    z-index:100;
+    z-index:150;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  @supports (padding: max(0px)){
+    .top-right-bar{
+      top:max(16px, env(safe-area-inset-top));
+      right:max(16px, env(safe-area-inset-right));
+    }
+  }
+
+  #searchBtn{
     width:42px;
     height:42px;
+    flex-shrink:0;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -386,12 +399,6 @@
   #searchBtn:hover{
     transform:translateX(2px);
     box-shadow:0 8px 18px -6px rgba(43,36,28,0.4);
-  }
-  @supports (padding: max(0px)){
-    #searchBtn{
-      top:max(16px, env(safe-area-inset-top));
-      right:max(16px, env(safe-area-inset-right));
-    }
   }
 
   /* ---------- Search overlay ---------- */
@@ -515,57 +522,124 @@
   }
 
   /* ---------- Auth control (sign in / account) ---------- */
-  .auth-control{
-    position:absolute;
-    top:14px;
-    right:16px;
-    z-index:5;
-  }
+  .auth-control{ display:flex; align-items:center; flex-shrink:0; }
   .auth-signin-btn{
-    background:rgba(255,255,255,0.14);
-    border:1px solid rgba(255,255,255,0.3);
-    color:var(--paper);
+    background:var(--card);
+    border:1px solid var(--line);
+    border-right:4px solid var(--forest);
+    color:var(--ink);
     font-family:'Karla', sans-serif;
     font-size:12.5px;
     font-weight:700;
-    padding:7px 14px;
+    padding:11px 16px;
     border-radius:100px;
     cursor:pointer;
+    box-shadow:0 6px 14px -6px rgba(43,36,28,0.32);
+    white-space:nowrap;
   }
-  .auth-signin-btn:hover{ background:rgba(255,255,255,0.24); }
+  .auth-signin-btn:hover{ box-shadow:0 8px 18px -6px rgba(43,36,28,0.4); }
   .auth-user{
     display:flex;
     align-items:center;
-    gap:8px;
-    background:rgba(255,255,255,0.14);
-    border:1px solid rgba(255,255,255,0.3);
+    gap:4px;
+    background:var(--card);
+    border:1px solid var(--line);
     border-radius:100px;
-    padding:5px 8px 5px 5px;
+    padding:5px 6px 5px 5px;
+    box-shadow:0 6px 14px -6px rgba(43,36,28,0.32);
   }
   .auth-avatar{
-    width:22px;
-    height:22px;
+    width:26px;
+    height:26px;
     border-radius:50%;
     display:block;
+    flex-shrink:0;
+  }
+  .auth-name-btn{
+    display:flex;
+    align-items:center;
+    gap:2px;
+    background:none;
+    border:none;
+    cursor:pointer;
+    padding:2px 3px;
   }
   .auth-name{
-    color:var(--paper);
-    font-size:12px;
+    color:var(--ink);
+    font-size:12.5px;
     font-weight:700;
-    max-width:90px;
+    max-width:76px;
     overflow:hidden;
     text-overflow:ellipsis;
     white-space:nowrap;
   }
+  .auth-caret{
+    color:var(--ink-soft);
+    font-size:9px;
+    line-height:1;
+  }
   .auth-signout-btn{
     background:none;
     border:none;
-    color:rgba(250,246,236,0.65);
+    border-left:1px solid var(--line);
+    color:var(--ink-soft);
     font-size:11px;
     font-weight:700;
     cursor:pointer;
-    padding:2px 4px;
-    text-decoration:underline;
+    padding:2px 4px 2px 8px;
+    white-space:nowrap;
+  }
+
+  /* ---------- Account dropdown menu ---------- */
+  .account-menu{
+    position:fixed;
+    top:66px;
+    right:16px;
+    z-index:160;
+    display:none;
+    flex-direction:column;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:12px;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+    min-width:170px;
+  }
+  .account-menu.open{ display:flex; animation:riseIn 0.18s ease both; }
+  .account-menu-item{
+    background:none;
+    border:none;
+    border-bottom:1px solid var(--line);
+    text-align:left;
+    padding:13px 16px;
+    font-family:'Karla', sans-serif;
+    font-size:14px;
+    font-weight:700;
+    color:var(--ink);
+    cursor:pointer;
+  }
+  .account-menu-item:last-child{ border-bottom:none; }
+  .account-menu-item:hover{ background:rgba(63,92,74,0.06); }
+  @supports (padding: max(0px)){
+    .account-menu{
+      top:max(66px, calc(env(safe-area-inset-top) + 50px));
+      right:max(16px, env(safe-area-inset-right));
+    }
+  }
+
+  /* ---------- Favorites / History content ---------- */
+  .fav-group-title{
+    font-family:'Fraunces', serif;
+    font-size:15px;
+    font-weight:600;
+    color:var(--forest-deep);
+    margin:18px 4px 8px;
+  }
+  .fav-group-title:first-child{ margin-top:2px; }
+  .history-row-meta{
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-top:2px;
   }
 
   /* ---------- Recipe social: rating / favorite / cooked ---------- */
@@ -1109,13 +1183,48 @@
   </div>
 </div>
 
-<button id="backBtn" onclick="goBack()">
-  <span class="chevron">&lsaquo;</span> Back
-</button>
+<div id="topRightBar" class="top-right-bar">
+  <div id="authControl" class="auth-control">
+    <button id="signInBtn" class="auth-signin-btn" onclick="window.signInGoogle && window.signInGoogle()">Sign in</button>
+    <div id="authUser" class="auth-user" style="display:none;">
+      <img id="authAvatar" class="auth-avatar" src="" alt="">
+      <button class="auth-name-btn" id="authNameBtn" onclick="window.toggleAccountMenu && window.toggleAccountMenu()">
+        <span id="authName" class="auth-name"></span>
+        <span class="auth-caret">&#9662;</span>
+      </button>
+      <button class="auth-signout-btn" onclick="window.signOutUser && window.signOutUser()">Sign out</button>
+    </div>
+  </div>
 
-<button id="searchBtn" onclick="openSearch()" aria-label="Search recipes">
-  <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-</button>
+  <button id="searchBtn" onclick="openSearch()" aria-label="Search recipes">
+    <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+  </button>
+</div>
+
+<div id="accountMenu" class="account-menu">
+  <button class="account-menu-item" onclick="window.openMyFavorites && window.openMyFavorites()">My Favorites</button>
+  <button class="account-menu-item" onclick="window.openMyHistory && window.openMyHistory()">My History</button>
+</div>
+
+<div id="favoritesOverlay" class="cart-overlay" onclick="if(event.target===this) window.closeMyFavorites()">
+  <div class="cart-sheet">
+    <div class="cart-sheet-head">
+      <h2>My Favorites</h2>
+      <button class="cart-close" onclick="window.closeMyFavorites()" aria-label="Close">&times;</button>
+    </div>
+    <div id="favoritesSheetBody" class="cart-sheet-body"></div>
+  </div>
+</div>
+
+<div id="historyOverlay" class="cart-overlay" onclick="if(event.target===this) window.closeMyHistory()">
+  <div class="cart-sheet">
+    <div class="cart-sheet-head">
+      <h2>My History</h2>
+      <button class="cart-close" onclick="window.closeMyHistory()" aria-label="Close">&times;</button>
+    </div>
+    <div id="historySheetBody" class="cart-sheet-body"></div>
+  </div>
+</div>
 
 <div id="searchOverlay" class="search-overlay" onclick="if(event.target===this) closeSearch()">
   <div class="search-sheet">
@@ -1133,6 +1242,10 @@
     <div id="searchResults" class="search-results"></div>
   </div>
 </div>
+
+<button id="backBtn" onclick="goBack()">
+  <span class="chevron">&lsaquo;</span> Back
+</button>
 
 <button id="cartBtn" onclick="openCart()">
   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
@@ -1175,14 +1288,6 @@
 <div class="wrap">
 
   <div class="lid">
-    <div id="authControl" class="auth-control">
-      <button id="signInBtn" class="auth-signin-btn" onclick="window.signInGoogle && window.signInGoogle()">Sign in</button>
-      <div id="authUser" class="auth-user" style="display:none;">
-        <img id="authAvatar" class="auth-avatar" src="" alt="">
-        <span id="authName" class="auth-name"></span>
-        <button class="auth-signout-btn" onclick="window.signOutUser && window.signOutUser()">Sign out</button>
-      </div>
-    </div>
     <div class="lid-label">
       <span class="name">Teddy D's Recipe Book</span>
       <span class="tagline">a running collection, added to as we go</span>
@@ -2286,9 +2391,11 @@ history.replaceState({ route: 'home' }, '', '#home');
   const provider = new GoogleAuthProvider();
 
   let currentUser = null;
-  let myFavorites = {};   // { "category:idx": true }
-  let myRatings = {};     // { "category:idx": 1-5 }
-  const avgCache = {};    // { "category:idx": { avg, count } }
+  let myFavorites = {};    // { "category:idx": true }
+  let myRatings = {};      // { "category:idx": 1-5 }
+  let myCookedCount = {};  // { "category:idx": number }
+  let myCookedLast = {};   // { "category:idx": Date }
+  const avgCache = {};     // { "category:idx": { avg, count } }
 
   window.signInGoogle = async function(){
     const status = document.getElementById('authGateStatus');
@@ -2314,15 +2421,29 @@ history.replaceState({ route: 'home' }, '', '#home');
     return doc(db, "users", uid);
   }
 
+  function toDateSafe(val){
+    if(!val) return null;
+    if(typeof val.toDate === 'function') return val.toDate();
+    if(val instanceof Date) return val;
+    return null;
+  }
+
   async function loadMyData(uid){
     const snap = await getDoc(userDocRef(uid));
     if(snap.exists()){
       const data = snap.data();
       myFavorites = data.favorites || {};
       myRatings = data.ratings || {};
+      myCookedCount = data.cookedCount || {};
+      myCookedLast = {};
+      Object.keys(data.cookedLast || {}).forEach(k => {
+        myCookedLast[k] = toDateSafe(data.cookedLast[k]);
+      });
     } else {
       myFavorites = {};
       myRatings = {};
+      myCookedCount = {};
+      myCookedLast = {};
       await setDoc(userDocRef(uid), {
         displayName: currentUser.displayName || "",
         photoURL: currentUser.photoURL || "",
@@ -2447,12 +2568,110 @@ history.replaceState({ route: 'home' }, '', '#home');
       [`cookedCount.${key}`]: increment(1),
       [`cookedLast.${key}`]: serverTimestamp()
     });
+    myCookedCount[key] = (myCookedCount[key] || 0) + 1;
+    myCookedLast[key] = new Date();
     const btn = event && event.target;
     if(btn){
       const original = btn.textContent;
       btn.textContent = '✓ Logged!';
       setTimeout(() => { btn.textContent = original; }, 1500);
     }
+  };
+
+  /* ---------- Account dropdown, My Favorites, My History ---------- */
+
+  window.toggleAccountMenu = function(){
+    document.getElementById('accountMenu').classList.toggle('open');
+  };
+  function closeAccountMenu(){
+    document.getElementById('accountMenu').classList.remove('open');
+  }
+
+  document.addEventListener('click', function(e){
+    const menu = document.getElementById('accountMenu');
+    const nameBtn = document.getElementById('authNameBtn');
+    if(menu.classList.contains('open') && !menu.contains(e.target) && e.target !== nameBtn && !nameBtn.contains(e.target)){
+      closeAccountMenu();
+    }
+  });
+
+  function recipeFromKey(key){
+    const [category, idxStr] = key.split(':');
+    const idx = parseInt(idxStr, 10);
+    const list = (window.RECIPES_DATA && window.RECIPES_DATA[category]) || [];
+    return { category, idx, recipe: list[idx] };
+  }
+
+  window.goFromAccountList = function(key, closeFn){
+    closeFn();
+    if(window.goToSearchResult) window.goToSearchResult(key);
+  };
+
+  window.openMyFavorites = function(){
+    closeAccountMenu();
+    const body = document.getElementById('favoritesSheetBody');
+    const keys = Object.keys(myFavorites).filter(k => myFavorites[k]);
+
+    if(keys.length === 0){
+      body.innerHTML = `<div class="empty-state"><div class="stamp">No favorites yet</div><p>Tap ♡ Save on any recipe to add it here.</p></div>`;
+    } else {
+      const groups = {};
+      keys.forEach(key => {
+        const { category, recipe } = recipeFromKey(key);
+        if(!recipe) return;
+        const label = (window.categoryLabel ? window.categoryLabel(category) : category);
+        if(!groups[label]) groups[label] = [];
+        groups[label].push({ key, recipe });
+      });
+      let html = '';
+      Object.keys(groups).forEach(label => {
+        html += `<div class="fav-group-title">${label}</div>`;
+        groups[label].forEach(({ key, recipe }) => {
+          html += `<button class="search-result-row" onclick="window.goFromAccountList('${key}', window.closeMyFavorites)">
+            <span class="sr-title">${recipe.title}</span>
+          </button>`;
+        });
+      });
+      body.innerHTML = html;
+    }
+    document.getElementById('favoritesOverlay').classList.add('open');
+  };
+  window.closeMyFavorites = function(){
+    document.getElementById('favoritesOverlay').classList.remove('open');
+  };
+
+  window.openMyHistory = function(){
+    closeAccountMenu();
+    const body = document.getElementById('historySheetBody');
+    const keys = Object.keys(myCookedCount).filter(k => myCookedCount[k] > 0);
+
+    if(keys.length === 0){
+      body.innerHTML = `<div class="empty-state"><div class="stamp">No history yet</div><p>Tap 🍽 I cooked this on any recipe to log it here.</p></div>`;
+    } else {
+      keys.sort((a, b) => {
+        const da = myCookedLast[a] ? myCookedLast[a].getTime() : 0;
+        const db_ = myCookedLast[b] ? myCookedLast[b].getTime() : 0;
+        return db_ - da;
+      });
+      let html = '';
+      keys.forEach(key => {
+        const { category, recipe } = recipeFromKey(key);
+        if(!recipe) return;
+        const label = (window.categoryLabel ? window.categoryLabel(category) : category);
+        const count = myCookedCount[key];
+        const lastDate = myCookedLast[key];
+        const lastStr = lastDate ? lastDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+        html += `<button class="search-result-row" onclick="window.goFromAccountList('${key}', window.closeMyHistory)">
+          <span class="sr-title">${recipe.title}</span>
+          <span class="history-row-meta">${label} · Cooked ${count}× ${lastStr ? '· Last: ' + lastStr : ''}</span>
+        </button>`;
+      });
+      body.innerHTML = html;
+    }
+    document.getElementById('historyOverlay').classList.add('open');
+  };
+  window.closeMyHistory = function(){
+    document.getElementById('historyOverlay').classList.remove('open');
   };
 </script>
 
