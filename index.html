@@ -1283,6 +1283,27 @@
 </style>
 </head>
 <body>
+<script>
+  // Version check: compares this page against version.txt (fetched fresh,
+  // never cached) and force-reloads if they don't match, so updates reach
+  // people without needing a manual cache clear.
+  var PAGE_BUILD_VERSION = "2026-09-19-1";
+  (function(){
+    try{
+      fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
+        .then(function(r){ return r.ok ? r.text() : null; })
+        .then(function(v){
+          if(v && v.trim() !== PAGE_BUILD_VERSION && !sessionStorage.getItem('justReloaded')){
+            sessionStorage.setItem('justReloaded', '1');
+            location.reload();
+          } else if(v && v.trim() === PAGE_BUILD_VERSION){
+            sessionStorage.removeItem('justReloaded');
+          }
+        })
+        .catch(function(){ /* offline or file missing — fail silently, don't block the app */ });
+    } catch(e){ /* no-op */ }
+  })();
+</script>
 
 <div id="authGate" class="auth-gate">
   <div class="auth-gate-inner">
@@ -2562,9 +2583,9 @@ setTimeout(function(){
         isTokenAutoRefreshEnabled: true
       });
       const ai = getAI(fbApp, { backend: new GoogleAIBackend() });
-      aiModel = getGenerativeModel(ai, { model: "gemini-2.5-flash" });
+      aiModel = getGenerativeModel(ai, { model: "gemini-3.6-flash" });
       aiModelWithUrlContext = getGenerativeModel(ai, {
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         tools: [{ urlContext: {} }]
       });
     } catch(err){
@@ -2934,8 +2955,8 @@ setTimeout(function(){
       body.innerHTML = manualFormHTML();
     } else if(addRecipeTab === 'photo'){
       body.innerHTML = AI_CONFIGURED
-        ? `<label class="file-input-label" for="recipePhotoInput">Tap to take or choose a photo of the recipe</label>
-           <input id="recipePhotoInput" type="file" accept="image/*" style="display:none;" onchange="window.handleRecipePhoto(this)">
+        ? `<label class="file-input-label" for="recipePhotoInput">Tap to take or choose one or more photos of the recipe</label>
+           <input id="recipePhotoInput" type="file" accept="image/*" multiple style="display:none;" onchange="window.handleRecipePhoto(this)">
            <div id="aiStatusText" class="ai-status-text"></div>`
         : aiNotConfiguredHTML();
     } else if(addRecipeTab === 'link'){
@@ -3015,16 +3036,18 @@ setTimeout(function(){
 Ingredients and steps should read naturally, without numbering. If a field truly isn't available, use an empty string or empty array.`;
 
   window.handleRecipePhoto = async function(inputEl){
-    const file = inputEl.files && inputEl.files[0];
-    if(!file || !aiModel) return;
+    const files = inputEl.files ? Array.from(inputEl.files) : [];
+    if(files.length === 0 || !aiModel) return;
     const status = document.getElementById('aiStatusText');
-    status.textContent = 'Reading the photo…';
+    status.textContent = files.length > 1 ? `Reading ${files.length} photos…` : 'Reading the photo…';
     try{
-      const base64 = await fileToBase64(file);
-      const result = await aiModel.generateContent([
-        EXTRACTION_PROMPT,
-        { inlineData: { mimeType: file.type || 'image/jpeg', data: base64 } }
-      ]);
+      const imageParts = await Promise.all(files.map(async file => ({
+        inlineData: { mimeType: file.type || 'image/jpeg', data: await fileToBase64(file) }
+      })));
+      const promptText = files.length > 1
+        ? `${EXTRACTION_PROMPT}\n\nThese ${files.length} photos are all part of the same recipe (for example, ingredients in one photo and steps in another) — combine them into a single recipe.`
+        : EXTRACTION_PROMPT;
+      const result = await aiModel.generateContent([promptText, ...imageParts]);
       const text = result.response.text();
       const draft = parseAIRecipeJSON(text);
       document.getElementById('addRecipeSheetBody').innerHTML = manualFormHTML(draft);
