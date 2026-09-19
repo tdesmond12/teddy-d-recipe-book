@@ -511,6 +511,166 @@
     padding:30px 10px;
   }
 
+  /* ---------- Auth control (sign in / account) ---------- */
+  .auth-control{
+    position:absolute;
+    top:14px;
+    right:16px;
+    z-index:5;
+  }
+  .auth-signin-btn{
+    background:rgba(255,255,255,0.14);
+    border:1px solid rgba(255,255,255,0.3);
+    color:var(--paper);
+    font-family:'Karla', sans-serif;
+    font-size:12.5px;
+    font-weight:700;
+    padding:7px 14px;
+    border-radius:100px;
+    cursor:pointer;
+  }
+  .auth-signin-btn:hover{ background:rgba(255,255,255,0.24); }
+  .auth-user{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:rgba(255,255,255,0.14);
+    border:1px solid rgba(255,255,255,0.3);
+    border-radius:100px;
+    padding:5px 8px 5px 5px;
+  }
+  .auth-avatar{
+    width:22px;
+    height:22px;
+    border-radius:50%;
+    display:block;
+  }
+  .auth-name{
+    color:var(--paper);
+    font-size:12px;
+    font-weight:700;
+    max-width:90px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .auth-signout-btn{
+    background:none;
+    border:none;
+    color:rgba(250,246,236,0.65);
+    font-size:11px;
+    font-weight:700;
+    cursor:pointer;
+    padding:2px 4px;
+    text-decoration:underline;
+  }
+
+  /* ---------- Recipe social: rating / favorite / cooked ---------- */
+  .recipe-social{
+    margin:6px 22px 18px;
+    padding-top:14px;
+    border-top:1px solid var(--line);
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:12px 18px;
+  }
+  .star-row{
+    display:inline-flex;
+    align-items:center;
+    gap:2px;
+  }
+  .star-btn{
+    background:none;
+    border:none;
+    font-size:19px;
+    line-height:1;
+    padding:1px;
+    cursor:pointer;
+    color:var(--line);
+  }
+  .star-btn.filled{ color:var(--gold); }
+  .avg-rating-text{
+    font-size:12px;
+    color:var(--ink-soft);
+    font-weight:600;
+    margin-left:4px;
+  }
+  .social-btn{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:100px;
+    padding:6px 13px;
+    font-family:'Karla', sans-serif;
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--ink-soft);
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    transition:background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .social-btn.active{
+    background:rgba(163,75,52,0.12);
+    border-color:var(--rust);
+    color:var(--rust);
+  }
+  .social-signin-hint{
+    font-size:12px;
+    color:var(--ink-soft);
+    font-style:italic;
+  }
+
+  /* ---------- Sign-in gate ---------- */
+  .auth-gate{
+    position:fixed;
+    inset:0;
+    z-index:500;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:28px;
+    background:var(--forest);
+    background-image:linear-gradient(180deg, var(--forest) 0%, var(--forest-deep) 100%);
+    text-align:center;
+  }
+  .auth-gate.hidden{ display:none; }
+  .auth-gate-inner{ max-width:340px; }
+  .auth-gate-face{
+    color:var(--paper);
+    margin-bottom:18px;
+    display:flex;
+    justify-content:center;
+  }
+  .auth-gate-inner h1{
+    font-family:'Fraunces', serif;
+    color:var(--paper);
+    font-size:clamp(24px, 6vw, 32px);
+    font-weight:600;
+    margin:0 0 10px;
+  }
+  .auth-gate-inner p{
+    color:rgba(250,246,236,0.78);
+    font-size:14.5px;
+    margin:0 0 26px;
+    line-height:1.5;
+  }
+  .auth-gate-btn{
+    background:var(--paper);
+    color:var(--forest-deep);
+    border:none;
+    border-radius:100px;
+    padding:13px 26px;
+    font-family:'Karla', sans-serif;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+    box-shadow:0 10px 22px -8px rgba(0,0,0,0.4);
+    transition:transform 0.15s ease;
+  }
+  .auth-gate-btn:hover{ transform:translateY(-1px); }
+
   /* ---------- Recipe cards (expandable) ---------- */
   .recipe-card{
     background:var(--card);
@@ -930,6 +1090,22 @@
 </head>
 <body>
 
+<div id="authGate" class="auth-gate">
+  <div class="auth-gate-inner">
+    <div class="auth-gate-face">
+      <svg viewBox="0 0 24 24" width="52" height="52" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9.3"></circle>
+        <path d="M7 9.3c.6-1.2 1.4-1.2 2 0"></path>
+        <path d="M15 9.3c.6-1.2 1.4-1.2 2 0"></path>
+        <path d="M6.5 14 Q8 16.2 9.5 14 T12.5 14 T15.5 14"></path>
+      </svg>
+    </div>
+    <h1>Teddy D's Recipe Book</h1>
+    <p id="authGateStatus">Checking sign-in&hellip;</p>
+    <button id="authGateBtn" class="auth-gate-btn" style="display:none;" onclick="window.signInGoogle && window.signInGoogle()">Sign in with Google</button>
+  </div>
+</div>
+
 <button id="backBtn" onclick="goBack()">
   <span class="chevron">&lsaquo;</span> Back
 </button>
@@ -996,6 +1172,14 @@
 <div class="wrap">
 
   <div class="lid">
+    <div id="authControl" class="auth-control">
+      <button id="signInBtn" class="auth-signin-btn" onclick="window.signInGoogle && window.signInGoogle()">Sign in</button>
+      <div id="authUser" class="auth-user" style="display:none;">
+        <img id="authAvatar" class="auth-avatar" src="" alt="">
+        <span id="authName" class="auth-name"></span>
+        <button class="auth-signout-btn" onclick="window.signOutUser && window.signOutUser()">Sign out</button>
+      </div>
+    </div>
     <div class="lid-label">
       <span class="name">Teddy D's Recipe Book</span>
       <span class="tagline">a running collection, added to as we go</span>
@@ -1412,6 +1596,40 @@ const RECIPES_DATA = {
         "Move the tenderloins to a cutting board and the vegetables to a serving platter. Add the cider, vinegar, and mustard to the hot baking sheet, scraping up the browned bits. Whisk in the butter and chives until the butter melts, then season to taste.",
         "Slice the pork and arrange it on the platter with the vegetables. Spoon the sauce and any resting juices over the top before serving."
       ]
+    },
+    {
+      title: "Hot Honey Garlic Parm Chicken Tenders",
+      servings: "",
+      time: "",
+      ingredients: [
+        "Chicken tenders",
+        "Buttermilk",
+        "Hot sauce",
+        "Pickle juice",
+        "Cajun seasoning (recipe used PoggioliEats Cajun Seasoning)",
+        "Potato starch",
+        "All-purpose flour",
+        "Frying oil",
+        "Butter",
+        "Garlic",
+        "Honey",
+        "Garlic powder",
+        "Parmesan, freshly shaved",
+        "Fresh parsley",
+        "Ranch, for dipping"
+      ],
+      steps: [
+        "Marinate the chicken tenders in buttermilk, hot sauce, pickle juice, and the Cajun seasoning.",
+        "Mix 2 parts potato starch with 1 part flour and season generously with more Cajun seasoning to make the dredge.",
+        "Coat the chicken in the dredge, dip it back into the marinade, then coat it in the dredge again. Press the coating on firmly and let it rest for 10 minutes.",
+        "Fry at 300°F for 6–8 minutes, then remove and let rest briefly.",
+        "Raise the oil to 350–375°F and fry again for 3–4 minutes until deeply golden and extra crispy. Transfer to a wire rack.",
+        "For the sauce, combine butter, garlic, hot sauce, honey, and garlic powder in a pan over low heat, stirring until smooth and combined.",
+        "Brush the hot honey garlic sauce generously over the crispy tenders.",
+        "Finish with plenty of freshly shaved Parmesan and parsley.",
+        "Serve hot with ranch for dipping."
+      ],
+      note: "Exact ingredient amounts weren't included in the source post — just the ingredient list and steps."
     }
   ],
   sauces: [
@@ -1434,6 +1652,7 @@ const RECIPES_DATA = {
     }
   ]
 };
+window.RECIPES_DATA = RECIPES_DATA;
 
 function renderRecipeList(category, containerId){
   const container = document.getElementById(containerId);
@@ -1479,10 +1698,14 @@ function renderRecipeList(category, containerId){
           ${r.note ? `<p style="font-size:13px; color:var(--ink-soft); font-style:italic; margin-top:14px;">${r.note}</p>` : ''}
         </div>
         ${r.source ? `<div class="recipe-source">Adapted from <a href="${r.sourceUrl}" target="_blank" rel="noopener">${r.source}</a></div>` : ''}
+        <div class="recipe-social" id="social-${category}-${i}" data-key="${category}:${i}">
+          <span class="social-signin-hint">Sign in to rate, save, or log this recipe</span>
+        </div>
       </div>
     </details>`;
   });
   container.innerHTML = html;
+  if(window.refreshSocialUI) window.refreshSocialUI();
 }
 
 function renderGoodBad(){
@@ -1957,7 +2180,7 @@ const RECIPE_SCREEN_MAP = {
   'recipe-sauces': 'sauces'
 };
 
-function goTo(route){
+function goTo(route, fromHistory){
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + route).classList.add('active');
   renderCrumb(route);
@@ -1973,8 +2196,19 @@ function goTo(route){
   if(route === 'shopping'){
     renderShoppingScreen();
   }
+  if(!fromHistory){
+    history.pushState({ route }, '', '#' + route);
+  }
   window.scrollTo({ top: 0, behavior: 'auto' });
 }
+
+window.addEventListener('popstate', function(e){
+  const route = (e.state && e.state.route) || 'home';
+  closeCart();
+  closeSearch();
+  closeDinnerPrompt();
+  goTo(route, true);
+});
 
 let currentRoute = 'home';
 
@@ -2020,6 +2254,192 @@ renderCrumb('home');
 updateBackButton('home');
 updateCartButton('home');
 updateDinnerButton('home');
+history.replaceState({ route: 'home' }, '', '#home');
+</script>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+  import {
+    getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult,
+    onAuthStateChanged, signOut
+  } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, updateDoc, deleteField, increment,
+    serverTimestamp, collection, getDocs
+  } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBMVW5l8AizRudMd_9OmckqJ5BdSgvB96A",
+    authDomain: "teddy-ds-recipe-book.firebaseapp.com",
+    projectId: "teddy-ds-recipe-book",
+    storageBucket: "teddy-ds-recipe-book.firebasestorage.app",
+    messagingSenderId: "441881693263",
+    appId: "1:441881693263:web:598552190aeacab6feae3a"
+  };
+
+  const fbApp = initializeApp(firebaseConfig);
+  const auth = getAuth(fbApp);
+  const db = getFirestore(fbApp);
+  const provider = new GoogleAuthProvider();
+
+  let currentUser = null;
+  let myFavorites = {};   // { "category:idx": true }
+  let myRatings = {};     // { "category:idx": 1-5 }
+  const avgCache = {};    // { "category:idx": { avg, count } }
+
+  window.signInGoogle = function(){
+    signInWithRedirect(auth, provider);
+  };
+  window.signOutUser = function(){
+    signOut(auth);
+  };
+
+  getRedirectResult(auth).catch(err => console.error("Sign-in error:", err));
+
+  function userDocRef(uid){
+    return doc(db, "users", uid);
+  }
+
+  async function loadMyData(uid){
+    const snap = await getDoc(userDocRef(uid));
+    if(snap.exists()){
+      const data = snap.data();
+      myFavorites = data.favorites || {};
+      myRatings = data.ratings || {};
+    } else {
+      myFavorites = {};
+      myRatings = {};
+      await setDoc(userDocRef(uid), {
+        displayName: currentUser.displayName || "",
+        photoURL: currentUser.photoURL || "",
+        favorites: {},
+        ratings: {}
+      }, { merge: true });
+    }
+  }
+
+  function renderAuthUI(){
+    const signInBtn = document.getElementById('signInBtn');
+    const authUser = document.getElementById('authUser');
+    if(currentUser){
+      signInBtn.style.display = 'none';
+      authUser.style.display = 'flex';
+      document.getElementById('authAvatar').src = currentUser.photoURL || '';
+      document.getElementById('authName').textContent = (currentUser.displayName || 'Signed in').split(' ')[0];
+    } else {
+      signInBtn.style.display = 'inline-flex';
+      authUser.style.display = 'none';
+    }
+  }
+
+  function updateAuthGate(user){
+    const gate = document.getElementById('authGate');
+    const status = document.getElementById('authGateStatus');
+    const btn = document.getElementById('authGateBtn');
+    if(user){
+      gate.classList.add('hidden');
+    } else {
+      gate.classList.remove('hidden');
+      status.textContent = "Sign in with Google to view and use the recipe book.";
+      btn.style.display = 'inline-flex';
+    }
+  }
+
+  onAuthStateChanged(auth, async (user) => {
+    currentUser = user;
+    renderAuthUI();
+    updateAuthGate(user);
+    if(user){
+      await loadMyData(user.uid);
+    } else {
+      myFavorites = {};
+      myRatings = {};
+    }
+    if(window.refreshSocialUI) window.refreshSocialUI();
+  });
+
+  async function getAverageRating(key){
+    if(avgCache[key]) return avgCache[key];
+    const [category, idx] = key.split(':');
+    const snap = await getDocs(collection(db, "ratings", key, "users"));
+    let sum = 0, count = 0;
+    snap.forEach(d => { sum += d.data().value || 0; count++; });
+    const result = { avg: count ? (sum / count) : 0, count };
+    avgCache[key] = result;
+    return result;
+  }
+
+  function starRowHTML(key, myValue){
+    let stars = '';
+    for(let i = 1; i <= 5; i++){
+      stars += `<button class="star-btn ${i <= myValue ? 'filled' : ''}" onclick="window.rateRecipe('${key}', ${i})" aria-label="Rate ${i} stars">${i <= myValue ? '★' : '☆'}</button>`;
+    }
+    return stars;
+  }
+
+  async function renderOneSocial(el){
+    const key = el.getAttribute('data-key');
+
+    if(!currentUser){
+      el.innerHTML = `<span class="social-signin-hint">Sign in to rate, save, or log this recipe</span>`;
+      return;
+    }
+
+    const myValue = myRatings[key] || 0;
+    const isFav = !!myFavorites[key];
+    const { avg, count } = await getAverageRating(key);
+
+    el.innerHTML = `
+      <span class="star-row">${starRowHTML(key, myValue)}</span>
+      <span class="avg-rating-text">${count > 0 ? avg.toFixed(1) + ' avg (' + count + ')' : 'No ratings yet'}</span>
+      <button class="social-btn ${isFav ? 'active' : ''}" onclick="window.toggleFavorite('${key}')">${isFav ? '♥ Saved' : '♡ Save'}</button>
+      <button class="social-btn" onclick="window.markCooked('${key}')">🍽 I cooked this</button>
+    `;
+  }
+
+  window.refreshSocialUI = function(){
+    document.querySelectorAll('.recipe-social').forEach(el => renderOneSocial(el));
+  };
+
+  window.rateRecipe = async function(key, value){
+    if(!currentUser){ window.signInGoogle(); return; }
+    myRatings[key] = value;
+    delete avgCache[key];
+    await setDoc(doc(db, "ratings", key, "users", currentUser.uid), {
+      value, updatedAt: serverTimestamp()
+    });
+    await updateDoc(userDocRef(currentUser.uid), {
+      [`ratings.${key}`]: value
+    });
+    window.refreshSocialUI();
+  };
+
+  window.toggleFavorite = async function(key){
+    if(!currentUser){ window.signInGoogle(); return; }
+    const isFav = !!myFavorites[key];
+    if(isFav){
+      delete myFavorites[key];
+      await updateDoc(userDocRef(currentUser.uid), { [`favorites.${key}`]: deleteField() });
+    } else {
+      myFavorites[key] = true;
+      await updateDoc(userDocRef(currentUser.uid), { [`favorites.${key}`]: true });
+    }
+    window.refreshSocialUI();
+  };
+
+  window.markCooked = async function(key){
+    if(!currentUser){ window.signInGoogle(); return; }
+    await updateDoc(userDocRef(currentUser.uid), {
+      [`cookedCount.${key}`]: increment(1),
+      [`cookedLast.${key}`]: serverTimestamp()
+    });
+    const btn = event && event.target;
+    if(btn){
+      const original = btn.textContent;
+      btn.textContent = '✓ Logged!';
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    }
+  };
 </script>
 
 </body>
