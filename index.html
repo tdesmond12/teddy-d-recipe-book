@@ -2554,6 +2554,7 @@ setTimeout(function(){
   const RECAPTCHA_SITE_KEY = "6LesnMQtAAAAAKRHhd1qHKuCCJ6O39UObZpP-wk2";
   const AI_CONFIGURED = RECAPTCHA_SITE_KEY.indexOf("REPLACE_WITH") === -1;
   let aiModel = null;
+  let aiModelWithUrlContext = null;
   if(AI_CONFIGURED){
     try{
       initializeAppCheck(fbApp, {
@@ -2562,9 +2563,14 @@ setTimeout(function(){
       });
       const ai = getAI(fbApp, { backend: new GoogleAIBackend() });
       aiModel = getGenerativeModel(ai, { model: "gemini-2.5-flash" });
+      aiModelWithUrlContext = getGenerativeModel(ai, {
+        model: "gemini-2.5-flash",
+        tools: [{ urlContext: {} }]
+      });
     } catch(err){
       console.error("AI Logic setup failed:", err);
       aiModel = null;
+      aiModelWithUrlContext = null;
     }
   }
 
@@ -2929,7 +2935,7 @@ setTimeout(function(){
     } else if(addRecipeTab === 'photo'){
       body.innerHTML = AI_CONFIGURED
         ? `<label class="file-input-label" for="recipePhotoInput">Tap to take or choose a photo of the recipe</label>
-           <input id="recipePhotoInput" type="file" accept="image/*" capture="environment" style="display:none;" onchange="window.handleRecipePhoto(this)">
+           <input id="recipePhotoInput" type="file" accept="image/*" style="display:none;" onchange="window.handleRecipePhoto(this)">
            <div id="aiStatusText" class="ai-status-text"></div>`
         : aiNotConfiguredHTML();
     } else if(addRecipeTab === 'link'){
@@ -3024,7 +3030,7 @@ Ingredients and steps should read naturally, without numbering. If a field truly
       document.getElementById('addRecipeSheetBody').innerHTML = manualFormHTML(draft);
     } catch(err){
       console.error('Photo extraction failed:', err);
-      status.textContent = "Couldn't read that photo — try again, or use \"Type it in\".";
+      status.textContent = "Couldn't read that photo (" + (err.message || err.code || 'unknown error') + ") — try again, or use \"Type it in\".";
     }
   };
 
@@ -3032,19 +3038,18 @@ Ingredients and steps should read naturally, without numbering. If a field truly
     const urlInput = document.getElementById('recipeLinkInput');
     const url = urlInput.value.trim();
     const status = document.getElementById('aiStatusText');
-    if(!url || !aiModel) return;
+    if(!url || !aiModelWithUrlContext) return;
     status.textContent = 'Reading the page…';
     try{
-      const result = await aiModel.generateContent({
-        contents: [{ role: 'user', parts: [{ text: `${EXTRACTION_PROMPT}\n\nRecipe URL: ${url}` }] }],
-        tools: [{ urlContext: {} }]
-      });
+      const result = await aiModelWithUrlContext.generateContent(
+        `${EXTRACTION_PROMPT}\n\nRecipe URL: ${url}`
+      );
       const text = result.response.text();
       const draft = parseAIRecipeJSON(text);
       document.getElementById('addRecipeSheetBody').innerHTML = manualFormHTML(draft);
     } catch(err){
       console.error('Link extraction failed:', err);
-      status.textContent = "Couldn't read that link — try again, or use \"Type it in\".";
+      status.textContent = "Couldn't read that link (" + (err.message || err.code || 'unknown error') + ") — try again, or use \"Type it in\".";
     }
   };
 
