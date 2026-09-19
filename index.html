@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Teddy D's Recipe Book</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 
 <!-- iPhone / PWA "app" behavior -->
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2260,7 +2263,7 @@ history.replaceState({ route: 'home' }, '', '#home');
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
   import {
-    getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult,
+    getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
     onAuthStateChanged, signOut
   } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
   import {
@@ -2287,14 +2290,25 @@ history.replaceState({ route: 'home' }, '', '#home');
   let myRatings = {};     // { "category:idx": 1-5 }
   const avgCache = {};    // { "category:idx": { avg, count } }
 
-  window.signInGoogle = function(){
-    signInWithRedirect(auth, provider);
+  window.signInGoogle = async function(){
+    const status = document.getElementById('authGateStatus');
+    try{
+      await signInWithPopup(auth, provider);
+    } catch(err){
+      console.error("Sign-in error:", err);
+      if(err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request'){
+        // Fall back to redirect if the popup was blocked (rare in Safari when triggered by a tap)
+        signInWithRedirect(auth, provider);
+      } else if(status){
+        status.textContent = "Sign-in didn't go through — please try again.";
+      }
+    }
   };
   window.signOutUser = function(){
     signOut(auth);
   };
 
-  getRedirectResult(auth).catch(err => console.error("Sign-in error:", err));
+  getRedirectResult(auth).catch(err => console.error("Redirect sign-in error:", err));
 
   function userDocRef(uid){
     return doc(db, "users", uid);
