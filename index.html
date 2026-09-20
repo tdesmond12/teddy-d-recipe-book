@@ -781,7 +781,50 @@
     padding:0 22px 18px;
   }
   .social-btn.danger{ color:var(--rust); border-color:rgba(163,75,52,0.35); }
+  .social-btn.active{ background:rgba(63,92,74,0.12); border-color:var(--forest); color:var(--forest-deep); }
   .social-btn.danger:hover{ background:rgba(163,75,52,0.1); }
+
+  /* ---------- Update Category: current-categories list ---------- */
+  .current-cat-list{
+    border:1px solid var(--line);
+    border-radius:8px;
+    overflow:hidden;
+  }
+  .current-cat-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:10px 14px;
+    border-bottom:1px solid var(--line);
+    font-size:14px;
+    font-weight:600;
+  }
+  .current-cat-row:last-child{ border-bottom:none; }
+  .cat-remove-btn{
+    background:none;
+    border:1px solid rgba(163,75,52,0.35);
+    color:var(--rust);
+    border-radius:100px;
+    padding:5px 12px;
+    font-family:'Karla', sans-serif;
+    font-size:12px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .cat-remove-btn:hover{ background:rgba(163,75,52,0.1); }
+  .cat-remove-btn:disabled{
+    opacity:0.4;
+    cursor:not-allowed;
+  }
+
+  /* ---------- Footer ---------- */
+  .app-footer{
+    text-align:center;
+    font-size:12px;
+    color:var(--ink-soft);
+    opacity:0.7;
+    padding:28px 10px 10px;
+  }
 
   /* ---------- Account menu: view mode + my recipes ---------- */
   .account-menu-section-label{
@@ -830,6 +873,29 @@
     color:var(--line);
   }
   .star-btn.filled{ color:var(--gold); }
+  .difficulty-picker{
+    display:inline-flex;
+    gap:4px;
+  }
+  .dot-btn{
+    background:none;
+    border:none;
+    font-size:22px;
+    line-height:1;
+    padding:2px;
+    cursor:pointer;
+    color:var(--line);
+  }
+  .dot-btn.filled{ color:var(--rust); }
+  .difficulty-display{
+    display:inline-flex;
+    align-items:center;
+    gap:2px;
+    font-size:13px;
+    color:var(--line);
+    letter-spacing:1px;
+  }
+  .difficulty-display .dot-filled{ color:var(--rust); }
   .avg-rating-text{
     font-size:12px;
     color:var(--ink-soft);
@@ -1271,7 +1337,7 @@
     border-radius:12px;
     padding:14px 16px;
     box-shadow:var(--shadow);
-    max-width:230px;
+    max-width:270px;
   }
   .dinner-prompt.open{ display:block; animation:riseIn 0.2s ease both; }
   .dinner-prompt-label{
@@ -1303,6 +1369,11 @@
     color:var(--card);
     transform:translateY(-2px);
   }
+  .dinner-prompt-options button.selected{
+    background:var(--gold);
+    color:var(--card);
+    border-color:var(--gold);
+  }
   @supports (padding: max(0px)){
     .dinner-prompt{ bottom:max(92px, calc(env(safe-area-inset-bottom) + 84px)); left:max(20px, env(safe-area-inset-left)); }
   }
@@ -1333,7 +1404,7 @@
   // Version check: compares this page against version.txt (fetched fresh,
   // never cached) and force-reloads if they don't match, so updates reach
   // people without needing a manual cache clear.
-  var PAGE_BUILD_VERSION = "2026-09-19-7";
+  var PAGE_BUILD_VERSION = "2026-09-19-14";
   (function(){
     try{
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
@@ -1512,13 +1583,22 @@
 </button>
 
 <div id="dinnerPrompt" class="dinner-prompt">
-  <span class="dinner-prompt-label">Dinners this week?</span>
-  <div class="dinner-prompt-options">
-    <button onclick="rollDinners(2)">2</button>
-    <button onclick="rollDinners(3)">3</button>
-    <button onclick="rollDinners(4)">4</button>
-    <button onclick="rollDinners(5)">5</button>
+  <span class="dinner-prompt-label">How many dinners?</span>
+  <div class="dinner-prompt-options" id="dinnerCountOptions">
+    <button onclick="window.pickDinnerCount(2)" data-count="2">2</button>
+    <button onclick="window.pickDinnerCount(3)" data-count="3">3</button>
+    <button onclick="window.pickDinnerCount(4)" data-count="4">4</button>
+    <button onclick="window.pickDinnerCount(5)" data-count="5">5</button>
   </div>
+  <span class="dinner-prompt-label" style="margin-top:12px;">Max difficulty?</span>
+  <div class="dinner-prompt-options" id="dinnerDifficultyOptions">
+    <button onclick="window.pickDinnerDifficulty(1)" data-difficulty="1">1</button>
+    <button onclick="window.pickDinnerDifficulty(2)" data-difficulty="2">2</button>
+    <button onclick="window.pickDinnerDifficulty(3)" data-difficulty="3">3</button>
+    <button onclick="window.pickDinnerDifficulty(4)" data-difficulty="4">4</button>
+    <button class="selected" onclick="window.pickDinnerDifficulty(5)" data-difficulty="5">5</button>
+  </div>
+  <button class="form-save-btn" style="margin-top:12px; padding:10px;" onclick="window.confirmRollDinners()">Surprise Me!</button>
 </div>
 
 <div id="cartOverlay" class="cart-overlay" onclick="if(event.target===this) closeCart()">
@@ -1735,6 +1815,8 @@
   <div class="screen" id="screen-shopping">
     <div id="shopping-content"></div>
   </div>
+
+  <footer class="app-footer">© 2026 Ted Desmond. All rights reserved.</footer>
 
 </div>
 
@@ -2094,8 +2176,10 @@ function renderRecipeList(category, containerId){
         <div class="recipe-meta">
           ${r.servings ? `<span>Serves <strong>${r.servings}</strong></span>` : ''}
           ${r.time ? `<span>Time <strong>${r.time}</strong></span>` : ''}
+          ${r.difficulty ? `<span class="difficulty-display" title="Difficulty ${r.difficulty}/5">${difficultyDotsDisplay(r.difficulty)}</span>` : ''}
           ${visBadge}
           ${r._addedByName ? `<span class="added-by">Added by ${r._addedByName}${r._addedByEmail ? ' (' + r._addedByEmail + ')' : ''}</span>` : ''}
+          ${r._originalAddedByName ? `<span class="added-by">Originally added by ${r._originalAddedByName}${r._originalAddedByEmail ? ' (' + r._originalAddedByEmail + ')' : ''}</span>` : ''}
         </div>
         <div class="recipe-body">
           <h3>Ingredients</h3>
@@ -2109,6 +2193,7 @@ function renderRecipeList(category, containerId){
           <span class="social-signin-hint">Sign in to rate, save, or log this recipe</span>
         </div>
         ${isOwner ? `<div class="owner-actions">
+          <button class="social-btn ${r.isMeal ? 'active' : ''}" onclick="window.toggleRecipeMeal('${r.id}')">${r.isMeal ? '🍽 In Dinner Picker' : '🍽 Add to Dinner Picker'}</button>
           <button class="social-btn" onclick="window.toggleRecipeVisibility('${r.id}')">${r.visibility === 'private' ? '🌐 Make Public' : '🔒 Make Private'}</button>
           <button class="social-btn" onclick="window.openEditRecipe('${r.id}')">✏️ Edit</button>
           <button class="social-btn" onclick="window.openUpdateCategory('${r.id}')">🗂 Update Category</button>
@@ -2210,6 +2295,14 @@ function findRecipeById(id){
   return { category: null, recipe: null };
 }
 window.findRecipeById = findRecipeById;
+
+function difficultyDotsDisplay(value){
+  let out = '';
+  for(let i = 1; i <= 5; i++){
+    out += i <= value ? '<span class="dot-filled">●</span>' : '○';
+  }
+  return out;
+}
 
 function categoryLabel(cat){
   const map = {
@@ -2498,6 +2591,9 @@ function updateDinnerButton(route){
   }
 }
 
+let selectedDinnerCount = null;
+let selectedDinnerDifficulty = 5; // defaults to "all difficulties" so it's optional to change
+
 function toggleDinnerPrompt(){
   document.getElementById('dinnerPrompt').classList.toggle('open');
 }
@@ -2506,8 +2602,35 @@ function closeDinnerPrompt(){
   document.getElementById('dinnerPrompt').classList.remove('open');
 }
 
-function rollDinners(n){
-  const pool = getAllRecipesFlat().filter(item => item.recipe.isMeal === true);
+window.pickDinnerCount = function(n){
+  selectedDinnerCount = n;
+  document.querySelectorAll('#dinnerCountOptions button').forEach(btn => {
+    btn.classList.toggle('selected', parseInt(btn.getAttribute('data-count'), 10) === n);
+  });
+};
+
+window.pickDinnerDifficulty = function(n){
+  selectedDinnerDifficulty = n;
+  document.querySelectorAll('#dinnerDifficultyOptions button').forEach(btn => {
+    btn.classList.toggle('selected', parseInt(btn.getAttribute('data-difficulty'), 10) === n);
+  });
+};
+
+window.confirmRollDinners = function(){
+  if(!selectedDinnerCount){
+    alert('Pick how many dinners you want first.');
+    return;
+  }
+  rollDinners(selectedDinnerCount, selectedDinnerDifficulty);
+};
+
+function rollDinners(n, maxDifficulty){
+  const uid = window.currentUserUid;
+  const pool = getAllRecipesFlat().filter(item =>
+    item.recipe.isMeal === true
+    && uid && item.recipe.ownerUid === uid
+    && (!item.recipe.difficulty || item.recipe.difficulty <= maxDifficulty)
+  );
   closeDinnerPrompt();
   if(pool.length === 0) return;
 
@@ -2913,10 +3036,15 @@ setTimeout(function(){
       steps: Array.isArray(data.steps) ? data.steps : [],
       visibility: data.visibility || "public",
       ownerUid: data.addedBy || null,
+      difficulty: data.difficulty || 0,
+      source: data.source || "",
+      sourceUrl: data.sourceUrl || "",
       categories,
       _docId: docSnap.id,
       _addedByName: data.addedByName || "",
-      _addedByEmail: data.addedByEmail || ""
+      _addedByEmail: data.addedByEmail || "",
+      _originalAddedByName: data.originalAddedByName || "",
+      _originalAddedByEmail: data.originalAddedByEmail || ""
     };
     categories.forEach(cat => window.RECIPES_DATA[cat].push(recipeObj)); // same object reference in each array
   }
@@ -3279,6 +3407,26 @@ setTimeout(function(){
     const p = prefill || {};
     const ingredientsText = (p.ingredients || []).join('\n');
     const stepsText = (p.steps || []).join('\n');
+    // Once a source/credit has been set on an existing recipe, lock it —
+    // it can still be ADDED the first time (fresh entry, AI review before
+    // first save, or an edit where it was originally missed), but never
+    // changed or removed afterward, to protect the original creator's credit.
+    const hasExistingSource = !!(editingRecipeId && (p.source || p.sourceUrl));
+    const sourceFieldsHTML = hasExistingSource
+      ? `<div class="form-field">
+          <label>Source / credit <span style="font-weight:400; color:var(--ink-soft); font-size:11.5px;">(locked — protects the original creator's credit)</span></label>
+          <p style="font-size:14px; margin:6px 0 0; padding:10px 12px; background:var(--paper); border-radius:8px; border:1px solid var(--line);">${p.source || ''}${p.source && p.sourceUrl ? ' — ' : ''}${p.sourceUrl ? `<a href="${p.sourceUrl}" target="_blank" rel="noopener">${p.sourceUrl}</a>` : ''}</p>
+        </div>`
+      : `<div class="form-field-row">
+          <div class="form-field">
+            <label>Source / credit (site or person)</label>
+            <input type="text" id="draftSource" value="${(p.source || '').replace(/"/g, '&quot;')}" placeholder="e.g. Meat Church, or @username">
+          </div>
+          <div class="form-field">
+            <label>Source link (optional)</label>
+            <input type="text" id="draftSourceUrl" value="${(p.sourceUrl || '').replace(/"/g, '&quot;')}" placeholder="https://...">
+          </div>
+        </div>`;
     return `
       <div class="form-field">
         <label>Title</label>
@@ -3302,6 +3450,12 @@ setTimeout(function(){
         <label>Steps (one per line)</label>
         <textarea id="draftSteps" rows="6">${stepsText}</textarea>
       </div>
+      ${sourceFieldsHTML}
+      <div class="form-field">
+        <label>Difficulty</label>
+        <div class="difficulty-picker" id="draftDifficultyPicker">${difficultyDotsPickerHTML(p.difficulty || 0)}</div>
+        <input type="hidden" id="draftDifficulty" value="${p.difficulty || 0}">
+      </div>
       <div class="form-checkbox-row">
         <input type="checkbox" id="draftMeal" ${p.isMeal ? 'checked' : ''}>
         <label for="draftMeal" style="margin:0;">Include in the random weekly dinner picker (Meal)</label>
@@ -3317,6 +3471,21 @@ setTimeout(function(){
       <button class="form-save-btn" onclick="window.submitAddRecipe()">${editingRecipeId ? 'Save Changes' : 'Save Recipe'}</button>
     `;
   }
+
+  function difficultyDotsPickerHTML(value){
+    let html = '';
+    for(let i = 1; i <= 5; i++){
+      html += `<button type="button" class="dot-btn ${i <= value ? 'filled' : ''}" onclick="window.setDraftDifficulty(${i})" aria-label="Difficulty ${i}">${i <= value ? '●' : '○'}</button>`;
+    }
+    return html;
+  }
+
+  window.setDraftDifficulty = function(n){
+    const current = parseInt(document.getElementById('draftDifficulty').value, 10) || 0;
+    const newVal = current === n ? 0 : n; // tapping the active top dot again clears it
+    document.getElementById('draftDifficulty').value = newVal;
+    document.getElementById('draftDifficultyPicker').innerHTML = difficultyDotsPickerHTML(newVal);
+  };
 
   window.setDraftVisibility = function(val){
     document.getElementById('draftVisibility').value = val;
@@ -3342,13 +3511,21 @@ setTimeout(function(){
       servings: parsed.servings || '',
       time: parsed.time || '',
       ingredients: Array.isArray(parsed.ingredients) ? parsed.ingredients : [],
-      steps: Array.isArray(parsed.steps) ? parsed.steps : []
+      steps: Array.isArray(parsed.steps) ? parsed.steps : [],
+      source: parsed.source || '',
+      sourceUrl: parsed.sourceUrl || ''
     };
   }
 
   const EXTRACTION_PROMPT = `Extract this recipe. Return ONLY valid JSON, no markdown formatting, no code fences, no commentary — exactly this shape:
-{"title": string, "servings": string, "time": string, "ingredients": string[], "steps": string[]}
-Ingredients and steps should read naturally, without numbering. If a field truly isn't available, use an empty string or empty array.`;
+{"title": string, "servings": string, "time": string, "ingredients": string[], "steps": string[], "source": string, "sourceUrl": string}
+Ingredients and steps should read naturally, without numbering. If a field truly isn't available, use an empty string or empty array.
+
+Attribution is important — always credit whoever created this recipe:
+- If it's from a website, put the site or publication's name in "source" (e.g. "Meat Church").
+- If it's a social media post or screenshot, put the creator's name and/or handle in "source" (e.g. "Alic Foodie (@alicfoodie)") — look for bylines, watermarks, usernames, or "recipe by" credits anywhere in the image or page.
+- If any URL or social profile link is visible or provided, put it in "sourceUrl".
+- Never omit attribution if any creator name, handle, watermark, or byline is visible — crediting the original creator matters.`;
 
   window.handleRecipePhoto = async function(inputEl){
     const files = inputEl.files ? Array.from(inputEl.files) : [];
@@ -3384,6 +3561,7 @@ Ingredients and steps should read naturally, without numbering. If a field truly
       );
       const text = result.response.text();
       const draft = parseAIRecipeJSON(text);
+      if(!draft.sourceUrl) draft.sourceUrl = url; // fall back to the URL the user actually gave us
       document.getElementById('addRecipeSheetBody').innerHTML = manualFormHTML(draft);
     } catch(err){
       console.error('Link extraction failed:', err);
@@ -3401,6 +3579,13 @@ Ingredients and steps should read naturally, without numbering. If a field truly
     const isMeal = document.getElementById('draftMeal').checked;
     const ingredients = document.getElementById('draftIngredients').value.split('\n').map(s => s.trim()).filter(Boolean);
     const steps = document.getElementById('draftSteps').value.split('\n').map(s => s.trim()).filter(Boolean);
+    // Source/credit fields don't exist in the DOM once locked (see manualFormHTML) —
+    // null here means "leave it alone", so an existing credit can never be touched.
+    const sourceEl = document.getElementById('draftSource');
+    const sourceUrlEl = document.getElementById('draftSourceUrl');
+    const source = sourceEl ? sourceEl.value.trim() : null;
+    const sourceUrl = sourceUrlEl ? sourceUrlEl.value.trim() : null;
+    const difficulty = parseInt(document.getElementById('draftDifficulty').value, 10) || 0;
     const visEl = document.getElementById('draftVisibility');
     const visibility = visEl && visEl.value === 'private' ? 'private' : 'public';
 
@@ -3411,17 +3596,21 @@ Ingredients and steps should read naturally, without numbering. If a field truly
       if(editingRecipeId){
         const { recipe } = recipeFromKey(editingRecipeId);
         if(!recipe || !recipe._docId) throw new Error('Recipe not found');
-        await updateDoc(doc(db, "recipes", recipe._docId), {
-          title, servings, time, isMeal, ingredients, steps, visibility
-        });
+        const updatePayload = { title, servings, time, isMeal, ingredients, steps, visibility, difficulty };
+        if(source !== null) updatePayload.source = source;
+        if(sourceUrl !== null) updatePayload.sourceUrl = sourceUrl;
+        await updateDoc(doc(db, "recipes", recipe._docId), updatePayload);
         recipe.title = title; recipe.servings = servings; recipe.time = time;
         recipe.isMeal = isMeal; recipe.ingredients = ingredients; recipe.steps = steps;
-        recipe.visibility = visibility;
+        recipe.visibility = visibility; recipe.difficulty = difficulty;
+        if(source !== null) recipe.source = source;
+        if(sourceUrl !== null) recipe.sourceUrl = sourceUrl;
       } else {
         const docRef = await addDoc(collection(db, "recipes"), {
           category: addRecipeCategory,
           categories: [addRecipeCategory],
-          title, servings, time, isMeal, ingredients, steps, visibility,
+          title, servings, time, isMeal, ingredients, steps, visibility, difficulty,
+          source: source || '', sourceUrl: sourceUrl || '',
           addedBy: currentUser.uid,
           addedByName: currentUser.displayName || '',
           addedByEmail: currentUser.email || '',
@@ -3430,7 +3619,8 @@ Ingredients and steps should read naturally, without numbering. If a field truly
 
         window.RECIPES_DATA[addRecipeCategory].push({
           id: addRecipeCategory + ':f' + docRef.id,
-          title, servings, time, isMeal, ingredients, steps,
+          title, servings, time, isMeal, ingredients, steps, difficulty,
+          source: source || '', sourceUrl: sourceUrl || '',
           visibility, ownerUid: currentUser.uid,
           categories: [addRecipeCategory],
           _docId: docRef.id,
@@ -3473,6 +3663,21 @@ Ingredients and steps should read naturally, without numbering. If a field truly
     }
   };
 
+  window.toggleRecipeMeal = async function(id){
+    if(!currentUser) return;
+    const { recipe } = recipeFromKey(id);
+    if(!recipe || recipe.ownerUid !== currentUser.uid || !recipe._docId) return;
+    const newIsMeal = !recipe.isMeal;
+    try{
+      await updateDoc(doc(db, "recipes", recipe._docId), { isMeal: newIsMeal });
+      recipe.isMeal = newIsMeal;
+      refreshActiveRecipeScreen();
+    } catch(err){
+      console.error('Meal toggle failed:', err);
+      alert("Couldn't change that — please try again.");
+    }
+  };
+
   window.deleteOwnedRecipe = async function(id){
     if(!currentUser) return;
     const { recipe } = recipeFromKey(id);
@@ -3497,27 +3702,39 @@ Ingredients and steps should read naturally, without numbering. If a field truly
     if(!currentUser) return;
     const { category, recipe } = recipeFromKey(id);
     if(!recipe) return;
+    // Whoever first added this recipe to the app keeps credit, even through
+    // multiple rounds of copying — carry forward the existing original credit
+    // if this is already a copy, otherwise the source recipe's own adder becomes "original".
+    const originalAddedByName = recipe._originalAddedByName || recipe._addedByName || '';
+    const originalAddedByEmail = recipe._originalAddedByEmail || recipe._addedByEmail || '';
     try{
       const docRef = await addDoc(collection(db, "recipes"), {
         category,
         categories: [category],
         title: recipe.title, servings: recipe.servings, time: recipe.time,
         isMeal: recipe.isMeal, ingredients: recipe.ingredients, steps: recipe.steps,
+        source: recipe.source || '', sourceUrl: recipe.sourceUrl || '',
+        difficulty: recipe.difficulty || 0,
         visibility: 'private',
         addedBy: currentUser.uid,
         addedByName: currentUser.displayName || '',
         addedByEmail: currentUser.email || '',
+        originalAddedByName, originalAddedByEmail,
         createdAt: serverTimestamp()
       });
       window.RECIPES_DATA[category].push({
         id: category + ':f' + docRef.id,
         title: recipe.title, servings: recipe.servings, time: recipe.time,
         isMeal: recipe.isMeal, ingredients: recipe.ingredients.slice(), steps: recipe.steps.slice(),
+        source: recipe.source || '', sourceUrl: recipe.sourceUrl || '',
+        difficulty: recipe.difficulty || 0,
         visibility: 'private', ownerUid: currentUser.uid,
         categories: [category],
         _docId: docRef.id,
         _addedByName: currentUser.displayName || '',
-        _addedByEmail: currentUser.email || ''
+        _addedByEmail: currentUser.email || '',
+        _originalAddedByName: originalAddedByName,
+        _originalAddedByEmail: originalAddedByEmail
       });
       refreshActiveRecipeScreen();
       alert(`"${recipe.title}" was copied to your recipes as private — edit it anytime from there.`);
@@ -3534,6 +3751,7 @@ Ingredients and steps should read naturally, without numbering. If a field truly
   function updateCategoryBodyHTML(recipe){
     const current = recipe.categories || [];
     const label = window.categoryLabel || (c => c);
+    const canRemove = current.length > 1;
     const changeOptions = ALL_CATEGORIES.map(c =>
       `<option value="${c}" ${current[0] === c ? 'selected' : ''}>${label(c)}</option>`
     ).join('');
@@ -3546,9 +3764,20 @@ Ingredients and steps should read naturally, without numbering. If a field truly
           <label for="uc-${c}" style="margin:0;">${label(c)}</label>
         </div>
       `).join('');
+    const currentCatRows = current.map(c => `
+      <div class="current-cat-row">
+        <span>${label(c)}</span>
+        <button class="cat-remove-btn" ${canRemove ? '' : 'disabled'} onclick="window.submitRemoveCategory('${recipe.id}', '${c}')">Remove</button>
+      </div>
+    `).join('');
 
     return `
       <div class="form-field">
+        <label>Currently shown in</label>
+        <div class="current-cat-list">${currentCatRows}</div>
+        ${!canRemove ? `<p style="font-size:12px; color:var(--ink-soft); margin-top:6px;">A recipe needs at least one category — add another below before removing this one.</p>` : ''}
+      </div>
+      <div class="form-field" style="margin-top:24px; padding-top:20px; border-top:1px solid var(--line);">
         <label>Change primary category</label>
         <select id="ucNewPrimary" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--line); font-size:14.5px;">
           ${changeOptions}
@@ -3620,6 +3849,36 @@ Ingredients and steps should read naturally, without numbering. If a field truly
     } catch(err){
       console.error('Add categories failed:', err);
       alert("Couldn't update categories — please try again.");
+    }
+  };
+
+  window.submitRemoveCategory = async function(id, catToRemove){
+    const { recipe } = recipeFromKey(id);
+    if(!recipe || !currentUser || recipe.ownerUid !== currentUser.uid || !recipe._docId) return;
+    const current = recipe.categories || [];
+    // Validation: a recipe must always keep at least one category.
+    if(current.length <= 1){
+      alert("A recipe needs to stay in at least one category — add another before removing this one.");
+      return;
+    }
+    const newCategories = current.filter(c => c !== catToRemove);
+    try{
+      await updateDoc(doc(db, "recipes", recipe._docId), {
+        categories: newCategories,
+        category: newCategories[0]
+      });
+      const arr = window.RECIPES_DATA[catToRemove];
+      if(arr){
+        const idx = arr.findIndex(r => r.id === id);
+        if(idx !== -1) arr.splice(idx, 1);
+      }
+      recipe.categories = newCategories;
+      // Re-render the sheet in place so the list and Remove-button state update live
+      document.getElementById('updateCategorySheetBody').innerHTML = updateCategoryBodyHTML(recipe);
+      refreshActiveRecipeScreen();
+    } catch(err){
+      console.error('Remove category failed:', err);
+      alert("Couldn't remove that category — please try again.");
     }
   };
 
