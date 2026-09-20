@@ -1333,7 +1333,7 @@
   // Version check: compares this page against version.txt (fetched fresh,
   // never cached) and force-reloads if they don't match, so updates reach
   // people without needing a manual cache clear.
-  var PAGE_BUILD_VERSION = "2026-09-19-6";
+  var PAGE_BUILD_VERSION = "2026-09-19-7";
   (function(){
     try{
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
@@ -1462,6 +1462,16 @@
       </div>
     </div>
     <div id="addRecipeSheetBody" class="cart-sheet-body"></div>
+  </div>
+</div>
+
+<div id="updateCategoryOverlay" class="cart-overlay" onclick="if(event.target===this) window.closeUpdateCategory()">
+  <div class="cart-sheet">
+    <div class="cart-sheet-head">
+      <h2 id="updateCategoryTitle">Update Category</h2>
+      <button class="cart-close" onclick="window.closeUpdateCategory()" aria-label="Close">&times;</button>
+    </div>
+    <div id="updateCategorySheetBody" class="cart-sheet-body"></div>
   </div>
 </div>
 
@@ -2025,6 +2035,7 @@ Object.keys(RECIPES_DATA).forEach(cat => {
     r.id = cat + ':' + i;
     r.visibility = 'public';
     r.ownerUid = null; // built-in recipes aren't owned by any user
+    r.categories = [cat];
   });
 });
 
@@ -2060,8 +2071,11 @@ function renderRecipeList(category, containerId){
     if(r.servings) metaBits.push(`Serves ${r.servings}`);
     if(r.time) metaBits.push(r.time);
     const openAttr = list.length === 1 ? ' open' : '';
-    const domId = 'recipe-' + r.id.replace(':', '-');
-    const socialDomId = 'social-' + r.id.replace(':', '-');
+    // Prefix ids with the CURRENT page's category (not just the recipe's own
+    // id) so the same recipe can safely render on more than one category page.
+    const idSuffix = r.id.replace(/:/g, '-');
+    const domId = 'recipe-' + category + '-' + idSuffix;
+    const socialDomId = 'social-' + category + '-' + idSuffix;
     const isOwner = !!(uid && r.ownerUid === uid);
     const isOthersCommunityRecipe = !!(r.ownerUid && !isOwner);
     const visBadge = r.ownerUid
@@ -2097,6 +2111,7 @@ function renderRecipeList(category, containerId){
         ${isOwner ? `<div class="owner-actions">
           <button class="social-btn" onclick="window.toggleRecipeVisibility('${r.id}')">${r.visibility === 'private' ? '🌐 Make Public' : '🔒 Make Private'}</button>
           <button class="social-btn" onclick="window.openEditRecipe('${r.id}')">✏️ Edit</button>
+          <button class="social-btn" onclick="window.openUpdateCategory('${r.id}')">🗂 Update Category</button>
           <button class="social-btn danger" onclick="window.deleteOwnedRecipe('${r.id}')">🗑 Delete</button>
         </div>` : ''}
         ${isOthersCommunityRecipe ? `<div class="owner-actions">
@@ -2170,15 +2185,31 @@ function getVegetablesCategory(){
 
 function getAllRecipesFlat(){
   const out = [];
+  const seen = new Set();
   const uid = window.currentUserUid;
   Object.keys(RECIPES_DATA).forEach(cat => {
     RECIPES_DATA[cat].forEach((r) => {
+      if(seen.has(r.id)) return; // a recipe can now live in more than one category array
       const visible = !r.ownerUid || r.visibility === 'public' || (uid && r.ownerUid === uid);
-      if(visible) out.push({ key: r.id, category: cat, recipe: r });
+      if(visible){
+        seen.add(r.id);
+        out.push({ key: r.id, category: (r.categories && r.categories[0]) || cat, recipe: r });
+      }
     });
   });
   return out;
 }
+
+// Finds a recipe by its stable id, searching every category array (a recipe
+// can now belong to more than one). Returns its primary/home category too.
+function findRecipeById(id){
+  for(const cat of Object.keys(RECIPES_DATA)){
+    const found = RECIPES_DATA[cat].find(r => r.id === id);
+    if(found) return { category: (found.categories && found.categories[0]) || cat, recipe: found };
+  }
+  return { category: null, recipe: null };
+}
+window.findRecipeById = findRecipeById;
 
 function categoryLabel(cat){
   const map = {
@@ -2568,9 +2599,10 @@ function onSearchInput(rawValue){
 }
 
 function goToSearchResult(key){
-  const [category, idxStr] = key.split(':');
-  const idx = idxStr;
   closeSearch();
+  const found = findRecipeById(key);
+  if(!found || !found.recipe) return;
+  const category = found.category;
 
   const routeForCategory = Object.keys(RECIPE_SCREEN_MAP).find(r => RECIPE_SCREEN_MAP[r] === category);
   if(!routeForCategory) return;
@@ -2578,7 +2610,7 @@ function goToSearchResult(key){
   goTo(routeForCategory);
 
   setTimeout(() => {
-    const el = document.getElementById(`recipe-${category}-${idx}`);
+    const el = document.getElementById('recipe-' + category + '-' + key.replace(/:/g, '-'));
     if(el){
       el.setAttribute('open', '');
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2857,14 +2889,21 @@ setTimeout(function(){
 
   let communityLoaded = false;
 
+  const loadedRecipeIds = new Set();
+
   function addCommunityRecipeToData(docSnap){
     const data = docSnap.data();
-    const cat = data.category;
-    if(!cat || !window.RECIPES_DATA || !window.RECIPES_DATA[cat]) return;
-    const id = cat + ':f' + docSnap.id;
-    // Skip if already added (a doc can match both the "public" and "mine" queries)
-    if(window.RECIPES_DATA[cat].some(r => r.id === id)) return;
-    window.RECIPES_DATA[cat].push({
+    const primaryCat = data.category; // legacy field, still used to seed the id
+    if(!primaryCat || !window.RECIPES_DATA || !window.RECIPES_DATA[primaryCat]) return;
+    const id = primaryCat + ':f' + docSnap.id;
+    if(loadedRecipeIds.has(id)) return; // a doc can match both the "public" and "mine" queries
+    loadedRecipeIds.add(id);
+
+    const categories = (Array.isArray(data.categories) && data.categories.length > 0)
+      ? data.categories.filter(c => window.RECIPES_DATA[c])
+      : [primaryCat];
+
+    const recipeObj = {
       id,
       title: data.title || "Untitled recipe",
       servings: data.servings || "",
@@ -2874,10 +2913,12 @@ setTimeout(function(){
       steps: Array.isArray(data.steps) ? data.steps : [],
       visibility: data.visibility || "public",
       ownerUid: data.addedBy || null,
+      categories,
       _docId: docSnap.id,
       _addedByName: data.addedByName || "",
       _addedByEmail: data.addedByEmail || ""
-    });
+    };
+    categories.forEach(cat => window.RECIPES_DATA[cat].push(recipeObj)); // same object reference in each array
   }
 
   async function loadCommunityRecipes(){
@@ -3040,10 +3081,7 @@ setTimeout(function(){
   });
 
   function recipeFromKey(key){
-    const category = key.split(':')[0];
-    const list = (window.RECIPES_DATA && window.RECIPES_DATA[category]) || [];
-    const recipe = list.find(r => r.id === key);
-    return { category, recipe };
+    return window.findRecipeById ? window.findRecipeById(key) : { category: null, recipe: null };
   }
 
   window.goFromAccountList = function(key, closeFn){
@@ -3382,6 +3420,7 @@ Ingredients and steps should read naturally, without numbering. If a field truly
       } else {
         const docRef = await addDoc(collection(db, "recipes"), {
           category: addRecipeCategory,
+          categories: [addRecipeCategory],
           title, servings, time, isMeal, ingredients, steps, visibility,
           addedBy: currentUser.uid,
           addedByName: currentUser.displayName || '',
@@ -3393,6 +3432,7 @@ Ingredients and steps should read naturally, without numbering. If a field truly
           id: addRecipeCategory + ':f' + docRef.id,
           title, servings, time, isMeal, ingredients, steps,
           visibility, ownerUid: currentUser.uid,
+          categories: [addRecipeCategory],
           _docId: docRef.id,
           _addedByName: currentUser.displayName || '',
           _addedByEmail: currentUser.email || ''
@@ -3400,12 +3440,7 @@ Ingredients and steps should read naturally, without numbering. If a field truly
       }
 
       window.closeAddRecipe();
-
-      const route = 'recipe-' + addRecipeCategory;
-      const screenEl = document.getElementById('screen-' + route);
-      if(screenEl && screenEl.classList.contains('active') && window.renderRecipeList){
-        window.renderRecipeList(addRecipeCategory, route + '-content');
-      }
+      refreshActiveRecipeScreen();
     } catch(err){
       console.error('Save failed:', err);
       alert("Couldn't save that recipe — please try again.");
@@ -3413,23 +3448,25 @@ Ingredients and steps should read naturally, without numbering. If a field truly
     }
   };
 
-  function refreshCategoryIfActive(category){
-    const route = 'recipe-' + category;
-    const screenEl = document.getElementById('screen-' + route);
-    if(screenEl && screenEl.classList.contains('active') && window.renderRecipeList){
-      window.renderRecipeList(category, route + '-content');
+  function refreshActiveRecipeScreen(){
+    const active = document.querySelector('.screen.active');
+    if(!active || !active.id || active.id.indexOf('screen-recipe-') !== 0) return;
+    const route = active.id.replace('screen-', '');
+    const screenMap = window.RECIPE_SCREEN_MAP || {};
+    if(screenMap[route] && window.renderRecipeList){
+      window.renderRecipeList(screenMap[route], route + '-content');
     }
   }
 
   window.toggleRecipeVisibility = async function(id){
     if(!currentUser) return;
-    const { category, recipe } = recipeFromKey(id);
+    const { recipe } = recipeFromKey(id);
     if(!recipe || recipe.ownerUid !== currentUser.uid || !recipe._docId) return;
     const newVis = recipe.visibility === 'private' ? 'public' : 'private';
     try{
       await updateDoc(doc(db, "recipes", recipe._docId), { visibility: newVis });
       recipe.visibility = newVis;
-      refreshCategoryIfActive(category);
+      refreshActiveRecipeScreen();
     } catch(err){
       console.error('Visibility toggle failed:', err);
       alert("Couldn't change that — please try again.");
@@ -3438,15 +3475,18 @@ Ingredients and steps should read naturally, without numbering. If a field truly
 
   window.deleteOwnedRecipe = async function(id){
     if(!currentUser) return;
-    const { category, recipe } = recipeFromKey(id);
+    const { recipe } = recipeFromKey(id);
     if(!recipe || recipe.ownerUid !== currentUser.uid || !recipe._docId) return;
     if(!confirm(`Delete "${recipe.title}"? This can't be undone.`)) return;
     try{
       await deleteDoc(doc(db, "recipes", recipe._docId));
-      const list = window.RECIPES_DATA[category];
-      const idx = list.findIndex(r => r.id === id);
-      if(idx !== -1) list.splice(idx, 1);
-      refreshCategoryIfActive(category);
+      (recipe.categories || []).forEach(cat => {
+        const list = window.RECIPES_DATA[cat];
+        if(!list) return;
+        const idx = list.findIndex(r => r.id === id);
+        if(idx !== -1) list.splice(idx, 1);
+      });
+      refreshActiveRecipeScreen();
     } catch(err){
       console.error('Delete failed:', err);
       alert("Couldn't delete that recipe — please try again.");
@@ -3460,6 +3500,7 @@ Ingredients and steps should read naturally, without numbering. If a field truly
     try{
       const docRef = await addDoc(collection(db, "recipes"), {
         category,
+        categories: [category],
         title: recipe.title, servings: recipe.servings, time: recipe.time,
         isMeal: recipe.isMeal, ingredients: recipe.ingredients, steps: recipe.steps,
         visibility: 'private',
@@ -3473,15 +3514,112 @@ Ingredients and steps should read naturally, without numbering. If a field truly
         title: recipe.title, servings: recipe.servings, time: recipe.time,
         isMeal: recipe.isMeal, ingredients: recipe.ingredients.slice(), steps: recipe.steps.slice(),
         visibility: 'private', ownerUid: currentUser.uid,
+        categories: [category],
         _docId: docRef.id,
         _addedByName: currentUser.displayName || '',
         _addedByEmail: currentUser.email || ''
       });
-      refreshCategoryIfActive(category);
+      refreshActiveRecipeScreen();
       alert(`"${recipe.title}" was copied to your recipes as private — edit it anytime from there.`);
     } catch(err){
       console.error('Copy failed:', err);
       alert("Couldn't copy that recipe — please try again.");
+    }
+  };
+
+  /* ---------- Update Category (change primary, or add to more) ---------- */
+
+  const ALL_CATEGORIES = ["heart-healthy", "grilled", "smoker", "italian", "mexican", "american", "sauces"];
+
+  function updateCategoryBodyHTML(recipe){
+    const current = recipe.categories || [];
+    const label = window.categoryLabel || (c => c);
+    const changeOptions = ALL_CATEGORIES.map(c =>
+      `<option value="${c}" ${current[0] === c ? 'selected' : ''}>${label(c)}</option>`
+    ).join('');
+    const addableCats = ALL_CATEGORIES.filter(c => current.indexOf(c) === -1);
+    const addCheckboxes = addableCats.length === 0
+      ? `<p style="font-size:13.5px; color:var(--ink-soft);">Already showing in every category.</p>`
+      : addableCats.map(c => `
+        <div class="form-checkbox-row">
+          <input type="checkbox" class="uc-extra-cat" value="${c}" id="uc-${c}">
+          <label for="uc-${c}" style="margin:0;">${label(c)}</label>
+        </div>
+      `).join('');
+
+    return `
+      <div class="form-field">
+        <label>Change primary category</label>
+        <select id="ucNewPrimary" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--line); font-size:14.5px;">
+          ${changeOptions}
+        </select>
+        <button class="form-save-btn" style="margin-top:10px;" onclick="window.submitChangeCategory('${recipe.id}')">Change Category</button>
+      </div>
+      <div class="form-field" style="margin-top:24px; padding-top:20px; border-top:1px solid var(--line);">
+        <label>Also show this recipe in additional categories</label>
+        ${addCheckboxes}
+        ${addableCats.length > 0 ? `<button class="form-save-btn" style="margin-top:10px;" onclick="window.submitAddCategories('${recipe.id}')">Add to Selected Categories</button>` : ''}
+      </div>
+    `;
+  }
+
+  window.openUpdateCategory = function(id){
+    if(!currentUser) return;
+    const { recipe } = recipeFromKey(id);
+    if(!recipe || recipe.ownerUid !== currentUser.uid) return;
+    document.getElementById('updateCategoryTitle').textContent = 'Update Category — ' + recipe.title;
+    document.getElementById('updateCategorySheetBody').innerHTML = updateCategoryBodyHTML(recipe);
+    document.getElementById('updateCategoryOverlay').classList.add('open');
+  };
+  window.closeUpdateCategory = function(){
+    document.getElementById('updateCategoryOverlay').classList.remove('open');
+  };
+
+  window.submitChangeCategory = async function(id){
+    const { recipe } = recipeFromKey(id);
+    if(!recipe || !currentUser || recipe.ownerUid !== currentUser.uid || !recipe._docId) return;
+    const newCat = document.getElementById('ucNewPrimary').value;
+    const oldCats = (recipe.categories || []).slice();
+    if(oldCats.length === 1 && oldCats[0] === newCat){ window.closeUpdateCategory(); return; }
+    try{
+      await updateDoc(doc(db, "recipes", recipe._docId), { categories: [newCat], category: newCat });
+      oldCats.forEach(cat => {
+        const arr = window.RECIPES_DATA[cat];
+        if(!arr) return;
+        const idx = arr.findIndex(r => r.id === id);
+        if(idx !== -1) arr.splice(idx, 1);
+      });
+      recipe.categories = [newCat];
+      if(window.RECIPES_DATA[newCat]) window.RECIPES_DATA[newCat].push(recipe);
+      window.closeUpdateCategory();
+      refreshActiveRecipeScreen();
+    } catch(err){
+      console.error('Change category failed:', err);
+      alert("Couldn't change category — please try again.");
+    }
+  };
+
+  window.submitAddCategories = async function(id){
+    const { recipe } = recipeFromKey(id);
+    if(!recipe || !currentUser || recipe.ownerUid !== currentUser.uid || !recipe._docId) return;
+    const checked = Array.from(document.querySelectorAll('.uc-extra-cat:checked')).map(el => el.value);
+    if(checked.length === 0){ window.closeUpdateCategory(); return; }
+    const current = recipe.categories || [];
+    const newCategories = current.slice();
+    checked.forEach(c => { if(newCategories.indexOf(c) === -1) newCategories.push(c); });
+    try{
+      await updateDoc(doc(db, "recipes", recipe._docId), { categories: newCategories });
+      checked.forEach(c => {
+        if(current.indexOf(c) === -1 && window.RECIPES_DATA[c]){
+          window.RECIPES_DATA[c].push(recipe);
+        }
+      });
+      recipe.categories = newCategories;
+      window.closeUpdateCategory();
+      refreshActiveRecipeScreen();
+    } catch(err){
+      console.error('Add categories failed:', err);
+      alert("Couldn't update categories — please try again.");
     }
   };
 
@@ -3512,6 +3650,7 @@ Ingredients and steps should read naturally, without numbering. If a field truly
       try{
         const docRef = await addDoc(collection(db, "recipes"), {
           category: item.category,
+          categories: [item.category],
           title: item.title,
           servings: item.servings || '',
           time: item.time || '',
@@ -3537,6 +3676,7 @@ Ingredients and steps should read naturally, without numbering. If a field truly
           steps: item.steps || [],
           visibility: 'public',
           ownerUid: currentUser.uid,
+          categories: [item.category],
           _docId: docRef.id,
           _addedByName: currentUser.displayName || 'Ted Desmond',
           _addedByEmail: currentUser.email || 'tdesmond12@gmail.com',
@@ -3553,16 +3693,7 @@ Ingredients and steps should read naturally, without numbering. If a field truly
     localStorage.setItem('legacyRecipesMigrated', '1');
     updateMigrateButtonVisibility();
     if(document.getElementById('accountMenu')) document.getElementById('accountMenu').classList.remove('open');
-
-    // Refresh whichever recipe category page is currently open
-    const active = document.querySelector('.screen.active');
-    if(active && active.id && active.id.indexOf('screen-recipe-') === 0){
-      const route = active.id.replace('screen-', '');
-      const screenMap = window.RECIPE_SCREEN_MAP || {};
-      if(screenMap[route] && window.renderRecipeList){
-        window.renderRecipeList(screenMap[route], route + '-content');
-      }
-    }
+    refreshActiveRecipeScreen();
 
     alert(`Done — moved ${succeeded} of ${legacy.length} recipes into your account. They're now yours to edit, delete, or make private.`);
   };
