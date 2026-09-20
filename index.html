@@ -902,6 +902,25 @@
     font-weight:600;
     margin-left:4px;
   }
+  .difficulty-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-basis:100%;
+  }
+  .difficulty-row-label{
+    font-size:12px;
+    color:var(--ink-soft);
+    font-weight:600;
+  }
+  .difficulty-row-dots{
+    display:inline-flex;
+    gap:2px;
+  }
+  .difficulty-row-dots .dot-btn{
+    font-size:18px;
+    padding:1px;
+  }
   .social-btn{
     background:var(--paper);
     border:1px solid var(--line);
@@ -1404,7 +1423,7 @@
   // Version check: compares this page against version.txt (fetched fresh,
   // never cached) and force-reloads if they don't match, so updates reach
   // people without needing a manual cache clear.
-  var PAGE_BUILD_VERSION = "2026-09-19-14";
+  var PAGE_BUILD_VERSION = "2026-09-19-16";
   (function(){
     try{
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
@@ -1485,8 +1504,7 @@
   <button class="account-menu-item view-mode-item" id="viewModeMine" onclick="window.setRecipeViewMode('mine')">
     <span>My Recipes only</span><span class="check-mark">✓</span>
   </button>
-  <div class="account-menu-section-label" id="migrateLabel" style="display:none;">One-time setup</div>
-  <button class="account-menu-item" id="migrateBtn" style="display:none;" onclick="window.migrateLegacyRecipes && window.migrateLegacyRecipes()">⚙️ Move old recipes into my account</button>
+
 </div>
 
 <div id="myRecipesOverlay" class="cart-overlay" onclick="if(event.target===this) window.closeMyRecipes()">
@@ -1930,184 +1948,6 @@ const RECIPES_DATA = {
   sauces: []
 };
 window.RECIPES_DATA = RECIPES_DATA;
-
-// One-time migration source: these 6 recipes used to be hardcoded here.
-// window.migrateLegacyRecipes() (run once from the account menu) copies each
-// of these into real, owned Firestore documents, then this array is spent —
-// it's only read by that migration function.
-window.LEGACY_RECIPES = [
-  {
-    category: "smoker",
-    title: "Dr. Pepper Chicken",
-    isMeal: true,
-    servings: "4–6",
-    time: "~2 hrs smoking, plus optional 4 hr–overnight brine",
-    ingredients: [
-      "1 whole chicken (about 5.75 lb)",
-      "All-purpose BBQ rub (recipe uses Meat Church Texas Sugar)",
-      "1 can (12 oz) Dr Pepper — preferably the pure cane sugar version",
-      "1 cup Dr Pepper BBQ sauce, for glazing",
-      "Optional: poultry brine + 1/2 gallon water",
-      "Optional: melted butter, for basting"
-    ],
-    steps: [
-      "Optional but recommended: mix the brine with water per its package directions, cool to room temperature, then submerge the chicken in a food-safe container and refrigerate 4 hours up to overnight. Remove, rinse, and pat dry.",
-      "Preheat a smoker or pellet grill to 350°F using a mild wood such as hickory, pecan, or fruitwood.",
-      "Gently work your fingers under the breast skin to loosen it from the meat without tearing it, then rub seasoning underneath.",
-      "Pour about three-quarters of a room-temperature Dr Pepper into a vertical chicken stand ('throne'), setting the rest aside.",
-      "Set the chicken upright on the stand, then season the outside generously with the rub. Let it sit 15–30 minutes so the seasoning adheres.",
-      "Smoke upright for roughly 2 hours (for a bird around 5.75 lb). Optionally baste with melted butter once or twice, starting around the 45-minute mark.",
-      "While the chicken cooks, prepare the Dr Pepper BBQ sauce.",
-      "Once the deepest part of the breast reads 150°F, baste with the BBQ sauce — doing this in the final 10–15 minutes keeps the sugar in the sauce from burning.",
-      "Pull the chicken once the breast hits 160°F internally; it will carry over-cook a few more degrees off the heat.",
-      "Rest 15 minutes, then carve and serve."
-    ],
-    source: "Meat Church",
-    sourceUrl: "https://www.meatchurch.com/blogs/recipes/dr-pepper-chicken"
-  },
-  {
-    category: "heart-healthy",
-    title: "Pork Tenderloin and Acorn Squash Traybake with Paprika and Caraway",
-    isMeal: true,
-    servings: "4–6",
-    time: "1 hour",
-    ingredients: [
-      "1½–2 lb acorn squash, halved lengthwise, seeded, cut into 2-inch wedges",
-      "2 medium red onions, root end intact, each cut into 8 wedges",
-      "4 tablespoons extra-virgin olive oil, divided",
-      "Kosher salt and ground black pepper",
-      "2 tablespoons caraway seeds, ground",
-      "2 tablespoons sweet paprika",
-      "2 tablespoons packed brown sugar",
-      "Two 1¼-pound pork tenderloins, trimmed of silver skin",
-      "¼ cup apple cider",
-      "1 tablespoon cider vinegar",
-      "1 tablespoon Dijon mustard",
-      "3 tablespoons salted butter, cut into 3 pieces",
-      "2 tablespoons finely chopped fresh chives"
-    ],
-    steps: [
-      "Heat the oven to 475°F with a rack in the upper-middle position. Coat a rimmed baking sheet with cooking spray.",
-      "Spread the squash and onion wedges on the sheet, drizzle with 2 tablespoons olive oil, season with 1/2 teaspoon each salt and pepper, toss, and spread into an even layer. Roast 20 minutes.",
-      "Meanwhile, stir together the ground caraway, paprika, brown sugar, and 1/2 teaspoon each salt and pepper in a small bowl. Rub each tenderloin with 1 tablespoon olive oil, then coat on all sides with the spice mixture, pressing so it adheres.",
-      "Pull the baking sheet from the oven, flip the vegetables, and push them to the edges. Set the tenderloins in the center, spaced evenly. Return to the oven and roast until the pork reaches 135°F in the center and a skewer slides easily into the squash, about 18–20 more minutes.",
-      "Move the tenderloins to a cutting board and the vegetables to a serving platter. Add the cider, vinegar, and mustard to the hot baking sheet, scraping up the browned bits. Whisk in the butter and chives until the butter melts, then season to taste.",
-      "Slice the pork and arrange it on the platter with the vegetables. Spoon the sauce and any resting juices over the top before serving."
-    ]
-  },
-  {
-    category: "american",
-    title: "Sticky Chicken with Pine Nuts & Mint",
-    isMeal: true,
-    servings: "4–6",
-    time: "~45–60 min, plus optional chilling time",
-    ingredients: [
-      "1 kg (2 lb 4 oz) skin-on chicken thigh fillets (or start with 1.2kg/2lb 12oz bone-in thighs if filleting yourself)",
-      "2 tablespoons olive oil",
-      "1 tablespoon sea salt flakes (kosher salt)",
-      "A big handful of fresh mint, leaves picked and chopped",
-      "Freshly ground black pepper",
-      "— For the double duty sauce —",
-      "2 lemons, sliced in half",
-      "70g (2½oz) pine nuts",
-      "100ml (3½fl oz / generous 1/3 cup) olive oil",
-      "4 tablespoons runny honey",
-      "4 garlic cloves, finely chopped",
-      "2 teaspoons ground cinnamon"
-    ],
-    steps: [
-      "Toss the chicken thighs in a large bowl with the olive oil, salt, and a few grinds of pepper until well coated. If time allows, refrigerate a few hours to let the salt work into the meat; otherwise, start cooking right away.",
-      "Set up the grill for indirect heat — a small fire in the center with a fire-free border around it — aiming for a lid temperature near 180°C (356°F).",
-      "Set the chicken in the fire-free outer zone, close the lid, and cook gently for 30–40 minutes, turning halfway, until the internal temperature reaches 60°C (140°F). At the same time, grill the halved lemons cut-side down for 10–15 minutes until deeply caramelized, then remove and set aside.",
-      "Once the chicken has had its initial cook, open the lid and set a small, heavy pan directly over the fire. Add the pine nuts and toast for a couple of minutes until they darken a shade or two, then transfer to a bowl.",
-      "Add the olive oil, honey, garlic, and cinnamon to the same pan, then squeeze in the juice from the grilled lemons. Season with salt and pepper and stir until everything melts together. Pour about two-thirds of this sauce over the toasted pine nuts and set aside as a dressing."
-    ],
-    note: "The source page was cut off after this point — the final steps (glazing the chicken with the remaining sauce and finishing with mint) weren't captured."
-  },
-  {
-    category: "american",
-    title: "Pork Tenderloin and Acorn Squash Traybake with Paprika and Caraway",
-    isMeal: true,
-    servings: "4–6",
-    time: "1 hour",
-    ingredients: [
-      "1½–2 lb acorn squash, halved lengthwise, seeded, cut into 2-inch wedges",
-      "2 medium red onions, root end intact, each cut into 8 wedges",
-      "4 tablespoons extra-virgin olive oil, divided",
-      "Kosher salt and ground black pepper",
-      "2 tablespoons caraway seeds, ground",
-      "2 tablespoons sweet paprika",
-      "2 tablespoons packed brown sugar",
-      "Two 1¼-pound pork tenderloins, trimmed of silver skin",
-      "¼ cup apple cider",
-      "1 tablespoon cider vinegar",
-      "1 tablespoon Dijon mustard",
-      "3 tablespoons salted butter, cut into 3 pieces",
-      "2 tablespoons finely chopped fresh chives"
-    ],
-    steps: [
-      "Heat the oven to 475°F with a rack in the upper-middle position. Coat a rimmed baking sheet with cooking spray.",
-      "Spread the squash and onion wedges on the sheet, drizzle with 2 tablespoons olive oil, season with 1/2 teaspoon each salt and pepper, toss, and spread into an even layer. Roast 20 minutes.",
-      "Meanwhile, stir together the ground caraway, paprika, brown sugar, and 1/2 teaspoon each salt and pepper in a small bowl. Rub each tenderloin with 1 tablespoon olive oil, then coat on all sides with the spice mixture, pressing so it adheres.",
-      "Pull the baking sheet from the oven, flip the vegetables, and push them to the edges. Set the tenderloins in the center, spaced evenly. Return to the oven and roast until the pork reaches 135°F in the center and a skewer slides easily into the squash, about 18–20 more minutes.",
-      "Move the tenderloins to a cutting board and the vegetables to a serving platter. Add the cider, vinegar, and mustard to the hot baking sheet, scraping up the browned bits. Whisk in the butter and chives until the butter melts, then season to taste.",
-      "Slice the pork and arrange it on the platter with the vegetables. Spoon the sauce and any resting juices over the top before serving."
-    ]
-  },
-  {
-    category: "american",
-    title: "Hot Honey Garlic Parm Chicken Tenders",
-    servings: "",
-    time: "",
-    ingredients: [
-      "Chicken tenders",
-      "Buttermilk",
-      "Hot sauce",
-      "Pickle juice",
-      "Cajun seasoning (recipe used PoggioliEats Cajun Seasoning)",
-      "Potato starch",
-      "All-purpose flour",
-      "Frying oil",
-      "Butter",
-      "Garlic",
-      "Honey",
-      "Garlic powder",
-      "Parmesan, freshly shaved",
-      "Fresh parsley",
-      "Ranch, for dipping"
-    ],
-    steps: [
-      "Marinate the chicken tenders in buttermilk, hot sauce, pickle juice, and the Cajun seasoning.",
-      "Mix 2 parts potato starch with 1 part flour and season generously with more Cajun seasoning to make the dredge.",
-      "Coat the chicken in the dredge, dip it back into the marinade, then coat it in the dredge again. Press the coating on firmly and let it rest for 10 minutes.",
-      "Fry at 300°F for 6–8 minutes, then remove and let rest briefly.",
-      "Raise the oil to 350–375°F and fry again for 3–4 minutes until deeply golden and extra crispy. Transfer to a wire rack.",
-      "For the sauce, combine butter, garlic, hot sauce, honey, and garlic powder in a pan over low heat, stirring until smooth and combined.",
-      "Brush the hot honey garlic sauce generously over the crispy tenders.",
-      "Finish with plenty of freshly shaved Parmesan and parsley.",
-      "Serve hot with ranch for dipping."
-    ],
-    note: "Exact ingredient amounts weren't included in the source post — just the ingredient list and steps."
-  },
-  {
-    category: "sauces",
-    title: "Lemon Buffalo Garlic",
-    ingredients: [
-      "¾ cup + 2 tablespoons hot sauce",
-      "7 tablespoons melted butter",
-      "3½ tablespoons honey",
-      "3½ teaspoons garlic powder",
-      "1¾ teaspoons paprika",
-      "2 tablespoons lemon juice",
-      "Cayenne pepper or red pepper flakes, to taste"
-    ],
-    steps: [
-      "Combine all ingredients in a saucepan and whisk until well blended.",
-      "Simmer over low heat for 2–3 minutes, stirring occasionally.",
-      "Pour over freshly cooked wings and toss until glossy and evenly coated."
-    ]
-  }
-];
 
 // Give every built-in recipe a stable id (category:index) plus default
 // visibility/ownership fields. This id format matches what the app already
@@ -3090,7 +2930,6 @@ setTimeout(function(){
     if(user){
       await loadMyData(user.uid);
       await loadCommunityRecipes();
-      updateMigrateButtonVisibility();
       // Refresh whichever recipe list is currently open so new items appear
       const screenMap = window.RECIPE_SCREEN_MAP || {};
       Object.keys(screenMap).forEach(route => {
@@ -3125,6 +2964,17 @@ setTimeout(function(){
     return stars;
   }
 
+  function difficultyRowHTML(key, value, isOwner){
+    let dots = '';
+    for(let i = 1; i <= 5; i++){
+      const filled = i <= value;
+      dots += isOwner
+        ? `<button class="dot-btn ${filled ? 'filled' : ''}" onclick="window.setQuickDifficulty('${key}', ${i})" aria-label="Set difficulty ${i}">${filled ? '●' : '○'}</button>`
+        : `<span class="${filled ? 'dot-filled' : ''}">${filled ? '●' : '○'}</span>`;
+    }
+    return `<span class="difficulty-row-label">Difficulty Score</span><span class="difficulty-row-dots">${dots}</span>`;
+  }
+
   async function renderOneSocial(el){
     const key = el.getAttribute('data-key');
 
@@ -3136,10 +2986,14 @@ setTimeout(function(){
     const myValue = myRatings[key] || 0;
     const isFav = !!myFavorites[key];
     const { avg, count } = await getAverageRating(key);
+    const { recipe } = recipeFromKey(key);
+    const isOwner = !!(recipe && recipe.ownerUid === currentUser.uid);
+    const difficultyValue = (recipe && recipe.difficulty) || 0;
 
     el.innerHTML = `
       <span class="star-row">${starRowHTML(key, myValue)}</span>
       <span class="avg-rating-text">${count > 0 ? avg.toFixed(1) + ' avg (' + count + ')' : 'No ratings yet'}</span>
+      <div class="difficulty-row">${difficultyRowHTML(key, difficultyValue, isOwner)}</div>
       <button class="social-btn ${isFav ? 'active' : ''}" onclick="window.toggleFavorite('${key}')">${isFav ? '♥ Saved' : '♡ Save'}</button>
       <button class="social-btn" onclick="window.markCooked('${key}')">🍽 I cooked this</button>
     `;
@@ -3678,6 +3532,23 @@ Attribution is important — always credit whoever created this recipe:
     }
   };
 
+  window.setQuickDifficulty = async function(key, n){
+    if(!currentUser) return;
+    const { recipe } = recipeFromKey(key);
+    if(!recipe || recipe.ownerUid !== currentUser.uid || !recipe._docId) return;
+    const current = recipe.difficulty || 0;
+    const newVal = current === n ? 0 : n; // tapping the active top dot again clears it
+    try{
+      await updateDoc(doc(db, "recipes", recipe._docId), { difficulty: newVal });
+      recipe.difficulty = newVal;
+      if(window.refreshSocialUI) window.refreshSocialUI();
+      refreshActiveRecipeScreen();
+    } catch(err){
+      console.error('Quick difficulty set failed:', err);
+      alert("Couldn't change that — please try again.");
+    }
+  };
+
   window.deleteOwnedRecipe = async function(id){
     if(!currentUser) return;
     const { recipe } = recipeFromKey(id);
@@ -3882,80 +3753,7 @@ Attribution is important — always credit whoever created this recipe:
     }
   };
 
-  /* ---------- One-time: migrate hardcoded legacy recipes into Firestore ---------- */
 
-  function updateMigrateButtonVisibility(){
-    const btn = document.getElementById('migrateBtn');
-    const label = document.getElementById('migrateLabel');
-    if(!btn || !label) return;
-    const legacy = window.LEGACY_RECIPES || [];
-    const alreadyDone = localStorage.getItem('legacyRecipesMigrated') === '1';
-    const shouldShow = legacy.length > 0 && !alreadyDone;
-    btn.style.display = shouldShow ? '' : 'none';
-    label.style.display = shouldShow ? '' : 'none';
-  }
-
-  window.migrateLegacyRecipes = async function(){
-    if(!currentUser){ window.signInGoogle(); return; }
-    const legacy = window.LEGACY_RECIPES || [];
-    if(legacy.length === 0) return;
-    if(!confirm(`Move ${legacy.length} old recipes into your account as real, editable recipes?`)) return;
-
-    const btn = document.getElementById('migrateBtn');
-    if(btn){ btn.disabled = true; btn.textContent = 'Moving recipes…'; }
-
-    let succeeded = 0;
-    for(const item of legacy){
-      try{
-        const docRef = await addDoc(collection(db, "recipes"), {
-          category: item.category,
-          categories: [item.category],
-          title: item.title,
-          servings: item.servings || '',
-          time: item.time || '',
-          isMeal: !!item.isMeal,
-          ingredients: item.ingredients || [],
-          steps: item.steps || [],
-          visibility: 'public',
-          addedBy: currentUser.uid,
-          addedByName: currentUser.displayName || 'Ted Desmond',
-          addedByEmail: currentUser.email || 'tdesmond12@gmail.com',
-          createdAt: serverTimestamp(),
-          ...(item.source ? { source: item.source, sourceUrl: item.sourceUrl } : {}),
-          ...(item.note ? { note: item.note } : {})
-        });
-
-        window.RECIPES_DATA[item.category].push({
-          id: item.category + ':f' + docRef.id,
-          title: item.title,
-          servings: item.servings || '',
-          time: item.time || '',
-          isMeal: !!item.isMeal,
-          ingredients: item.ingredients || [],
-          steps: item.steps || [],
-          visibility: 'public',
-          ownerUid: currentUser.uid,
-          categories: [item.category],
-          _docId: docRef.id,
-          _addedByName: currentUser.displayName || 'Ted Desmond',
-          _addedByEmail: currentUser.email || 'tdesmond12@gmail.com',
-          ...(item.source ? { source: item.source, sourceUrl: item.sourceUrl } : {}),
-          ...(item.note ? { note: item.note } : {})
-        });
-        succeeded++;
-      } catch(err){
-        console.error('Migration failed for', item.title, err);
-      }
-    }
-
-    window.LEGACY_RECIPES = []; // spent — don't offer to migrate again this session
-    localStorage.setItem('legacyRecipesMigrated', '1');
-    updateMigrateButtonVisibility();
-    if(document.getElementById('accountMenu')) document.getElementById('accountMenu').classList.remove('open');
-    refreshActiveRecipeScreen();
-
-    alert(`Done — moved ${succeeded} of ${legacy.length} recipes into your account. They're now yours to edit, delete, or make private.`);
-  };
 </script>
 
 </body>
