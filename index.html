@@ -1333,7 +1333,7 @@
   // Version check: compares this page against version.txt (fetched fresh,
   // never cached) and force-reloads if they don't match, so updates reach
   // people without needing a manual cache clear.
-  var PAGE_BUILD_VERSION = "2026-09-19-3";
+  var PAGE_BUILD_VERSION = "2026-09-19-6";
   (function(){
     try{
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
@@ -1414,6 +1414,8 @@
   <button class="account-menu-item view-mode-item" id="viewModeMine" onclick="window.setRecipeViewMode('mine')">
     <span>My Recipes only</span><span class="check-mark">✓</span>
   </button>
+  <div class="account-menu-section-label" id="migrateLabel" style="display:none;">One-time setup</div>
+  <button class="account-menu-item" id="migrateBtn" style="display:none;" onclick="window.migrateLegacyRecipes && window.migrateLegacyRecipes()">⚙️ Move old recipes into my account</button>
 </div>
 
 <div id="myRecipesOverlay" class="cart-overlay" onclick="if(event.target===this) window.closeMyRecipes()">
@@ -1827,184 +1829,193 @@ function badgeLabel(v){
 
 /* ---------- Recipes data ---------- */
 const RECIPES_DATA = {
-  smoker: [
-    {
-      title: "Dr. Pepper Chicken",
-      isMeal: true,
-      servings: "4–6",
-      time: "~2 hrs smoking, plus optional 4 hr–overnight brine",
-      ingredients: [
-        "1 whole chicken (about 5.75 lb)",
-        "All-purpose BBQ rub (recipe uses Meat Church Texas Sugar)",
-        "1 can (12 oz) Dr Pepper — preferably the pure cane sugar version",
-        "1 cup Dr Pepper BBQ sauce, for glazing",
-        "Optional: poultry brine + 1/2 gallon water",
-        "Optional: melted butter, for basting"
-      ],
-      steps: [
-        "Optional but recommended: mix the brine with water per its package directions, cool to room temperature, then submerge the chicken in a food-safe container and refrigerate 4 hours up to overnight. Remove, rinse, and pat dry.",
-        "Preheat a smoker or pellet grill to 350°F using a mild wood such as hickory, pecan, or fruitwood.",
-        "Gently work your fingers under the breast skin to loosen it from the meat without tearing it, then rub seasoning underneath.",
-        "Pour about three-quarters of a room-temperature Dr Pepper into a vertical chicken stand ('throne'), setting the rest aside.",
-        "Set the chicken upright on the stand, then season the outside generously with the rub. Let it sit 15–30 minutes so the seasoning adheres.",
-        "Smoke upright for roughly 2 hours (for a bird around 5.75 lb). Optionally baste with melted butter once or twice, starting around the 45-minute mark.",
-        "While the chicken cooks, prepare the Dr Pepper BBQ sauce.",
-        "Once the deepest part of the breast reads 150°F, baste with the BBQ sauce — doing this in the final 10–15 minutes keeps the sugar in the sauce from burning.",
-        "Pull the chicken once the breast hits 160°F internally; it will carry over-cook a few more degrees off the heat.",
-        "Rest 15 minutes, then carve and serve."
-      ],
-      source: "Meat Church",
-      sourceUrl: "https://www.meatchurch.com/blogs/recipes/dr-pepper-chicken"
-    }
-  ],
-  "heart-healthy": [
-    {
-      title: "Pork Tenderloin and Acorn Squash Traybake with Paprika and Caraway",
-      isMeal: true,
-      servings: "4–6",
-      time: "1 hour",
-      ingredients: [
-        "1½–2 lb acorn squash, halved lengthwise, seeded, cut into 2-inch wedges",
-        "2 medium red onions, root end intact, each cut into 8 wedges",
-        "4 tablespoons extra-virgin olive oil, divided",
-        "Kosher salt and ground black pepper",
-        "2 tablespoons caraway seeds, ground",
-        "2 tablespoons sweet paprika",
-        "2 tablespoons packed brown sugar",
-        "Two 1¼-pound pork tenderloins, trimmed of silver skin",
-        "¼ cup apple cider",
-        "1 tablespoon cider vinegar",
-        "1 tablespoon Dijon mustard",
-        "3 tablespoons salted butter, cut into 3 pieces",
-        "2 tablespoons finely chopped fresh chives"
-      ],
-      steps: [
-        "Heat the oven to 475°F with a rack in the upper-middle position. Coat a rimmed baking sheet with cooking spray.",
-        "Spread the squash and onion wedges on the sheet, drizzle with 2 tablespoons olive oil, season with 1/2 teaspoon each salt and pepper, toss, and spread into an even layer. Roast 20 minutes.",
-        "Meanwhile, stir together the ground caraway, paprika, brown sugar, and 1/2 teaspoon each salt and pepper in a small bowl. Rub each tenderloin with 1 tablespoon olive oil, then coat on all sides with the spice mixture, pressing so it adheres.",
-        "Pull the baking sheet from the oven, flip the vegetables, and push them to the edges. Set the tenderloins in the center, spaced evenly. Return to the oven and roast until the pork reaches 135°F in the center and a skewer slides easily into the squash, about 18–20 more minutes.",
-        "Move the tenderloins to a cutting board and the vegetables to a serving platter. Add the cider, vinegar, and mustard to the hot baking sheet, scraping up the browned bits. Whisk in the butter and chives until the butter melts, then season to taste.",
-        "Slice the pork and arrange it on the platter with the vegetables. Spoon the sauce and any resting juices over the top before serving."
-      ]
-    }
-  ],
+  smoker: [],
+  "heart-healthy": [],
   grilled: [],
   italian: [],
   mexican: [],
-  american: [
-    {
-      title: "Sticky Chicken with Pine Nuts & Mint",
-      isMeal: true,
-      servings: "4–6",
-      time: "~45–60 min, plus optional chilling time",
-      ingredients: [
-        "1 kg (2 lb 4 oz) skin-on chicken thigh fillets (or start with 1.2kg/2lb 12oz bone-in thighs if filleting yourself)",
-        "2 tablespoons olive oil",
-        "1 tablespoon sea salt flakes (kosher salt)",
-        "A big handful of fresh mint, leaves picked and chopped",
-        "Freshly ground black pepper",
-        "— For the double duty sauce —",
-        "2 lemons, sliced in half",
-        "70g (2½oz) pine nuts",
-        "100ml (3½fl oz / generous 1/3 cup) olive oil",
-        "4 tablespoons runny honey",
-        "4 garlic cloves, finely chopped",
-        "2 teaspoons ground cinnamon"
-      ],
-      steps: [
-        "Toss the chicken thighs in a large bowl with the olive oil, salt, and a few grinds of pepper until well coated. If time allows, refrigerate a few hours to let the salt work into the meat; otherwise, start cooking right away.",
-        "Set up the grill for indirect heat — a small fire in the center with a fire-free border around it — aiming for a lid temperature near 180°C (356°F).",
-        "Set the chicken in the fire-free outer zone, close the lid, and cook gently for 30–40 minutes, turning halfway, until the internal temperature reaches 60°C (140°F). At the same time, grill the halved lemons cut-side down for 10–15 minutes until deeply caramelized, then remove and set aside.",
-        "Once the chicken has had its initial cook, open the lid and set a small, heavy pan directly over the fire. Add the pine nuts and toast for a couple of minutes until they darken a shade or two, then transfer to a bowl.",
-        "Add the olive oil, honey, garlic, and cinnamon to the same pan, then squeeze in the juice from the grilled lemons. Season with salt and pepper and stir until everything melts together. Pour about two-thirds of this sauce over the toasted pine nuts and set aside as a dressing."
-      ],
-      note: "The source page was cut off after this point — the final steps (glazing the chicken with the remaining sauce and finishing with mint) weren't captured. Let me know if you can get a photo of the next page."
-    },
-    {
-      title: "Pork Tenderloin and Acorn Squash Traybake with Paprika and Caraway",
-      isMeal: true,
-      servings: "4–6",
-      time: "1 hour",
-      ingredients: [
-        "1½–2 lb acorn squash, halved lengthwise, seeded, cut into 2-inch wedges",
-        "2 medium red onions, root end intact, each cut into 8 wedges",
-        "4 tablespoons extra-virgin olive oil, divided",
-        "Kosher salt and ground black pepper",
-        "2 tablespoons caraway seeds, ground",
-        "2 tablespoons sweet paprika",
-        "2 tablespoons packed brown sugar",
-        "Two 1¼-pound pork tenderloins, trimmed of silver skin",
-        "¼ cup apple cider",
-        "1 tablespoon cider vinegar",
-        "1 tablespoon Dijon mustard",
-        "3 tablespoons salted butter, cut into 3 pieces",
-        "2 tablespoons finely chopped fresh chives"
-      ],
-      steps: [
-        "Heat the oven to 475°F with a rack in the upper-middle position. Coat a rimmed baking sheet with cooking spray.",
-        "Spread the squash and onion wedges on the sheet, drizzle with 2 tablespoons olive oil, season with 1/2 teaspoon each salt and pepper, toss, and spread into an even layer. Roast 20 minutes.",
-        "Meanwhile, stir together the ground caraway, paprika, brown sugar, and 1/2 teaspoon each salt and pepper in a small bowl. Rub each tenderloin with 1 tablespoon olive oil, then coat on all sides with the spice mixture, pressing so it adheres.",
-        "Pull the baking sheet from the oven, flip the vegetables, and push them to the edges. Set the tenderloins in the center, spaced evenly. Return to the oven and roast until the pork reaches 135°F in the center and a skewer slides easily into the squash, about 18–20 more minutes.",
-        "Move the tenderloins to a cutting board and the vegetables to a serving platter. Add the cider, vinegar, and mustard to the hot baking sheet, scraping up the browned bits. Whisk in the butter and chives until the butter melts, then season to taste.",
-        "Slice the pork and arrange it on the platter with the vegetables. Spoon the sauce and any resting juices over the top before serving."
-      ]
-    },
-    {
-      title: "Hot Honey Garlic Parm Chicken Tenders",
-      servings: "",
-      time: "",
-      ingredients: [
-        "Chicken tenders",
-        "Buttermilk",
-        "Hot sauce",
-        "Pickle juice",
-        "Cajun seasoning (recipe used PoggioliEats Cajun Seasoning)",
-        "Potato starch",
-        "All-purpose flour",
-        "Frying oil",
-        "Butter",
-        "Garlic",
-        "Honey",
-        "Garlic powder",
-        "Parmesan, freshly shaved",
-        "Fresh parsley",
-        "Ranch, for dipping"
-      ],
-      steps: [
-        "Marinate the chicken tenders in buttermilk, hot sauce, pickle juice, and the Cajun seasoning.",
-        "Mix 2 parts potato starch with 1 part flour and season generously with more Cajun seasoning to make the dredge.",
-        "Coat the chicken in the dredge, dip it back into the marinade, then coat it in the dredge again. Press the coating on firmly and let it rest for 10 minutes.",
-        "Fry at 300°F for 6–8 minutes, then remove and let rest briefly.",
-        "Raise the oil to 350–375°F and fry again for 3–4 minutes until deeply golden and extra crispy. Transfer to a wire rack.",
-        "For the sauce, combine butter, garlic, hot sauce, honey, and garlic powder in a pan over low heat, stirring until smooth and combined.",
-        "Brush the hot honey garlic sauce generously over the crispy tenders.",
-        "Finish with plenty of freshly shaved Parmesan and parsley.",
-        "Serve hot with ranch for dipping."
-      ],
-      note: "Exact ingredient amounts weren't included in the source post — just the ingredient list and steps."
-    }
-  ],
-  sauces: [
-    {
-      title: "Lemon Buffalo Garlic",
-      ingredients: [
-        "¾ cup + 2 tablespoons hot sauce",
-        "7 tablespoons melted butter",
-        "3½ tablespoons honey",
-        "3½ teaspoons garlic powder",
-        "1¾ teaspoons paprika",
-        "2 tablespoons lemon juice",
-        "Cayenne pepper or red pepper flakes, to taste"
-      ],
-      steps: [
-        "Combine all ingredients in a saucepan and whisk until well blended.",
-        "Simmer over low heat for 2–3 minutes, stirring occasionally.",
-        "Pour over freshly cooked wings and toss until glossy and evenly coated."
-      ]
-    }
-  ]
+  american: [],
+  sauces: []
 };
 window.RECIPES_DATA = RECIPES_DATA;
+
+// One-time migration source: these 6 recipes used to be hardcoded here.
+// window.migrateLegacyRecipes() (run once from the account menu) copies each
+// of these into real, owned Firestore documents, then this array is spent —
+// it's only read by that migration function.
+window.LEGACY_RECIPES = [
+  {
+    category: "smoker",
+    title: "Dr. Pepper Chicken",
+    isMeal: true,
+    servings: "4–6",
+    time: "~2 hrs smoking, plus optional 4 hr–overnight brine",
+    ingredients: [
+      "1 whole chicken (about 5.75 lb)",
+      "All-purpose BBQ rub (recipe uses Meat Church Texas Sugar)",
+      "1 can (12 oz) Dr Pepper — preferably the pure cane sugar version",
+      "1 cup Dr Pepper BBQ sauce, for glazing",
+      "Optional: poultry brine + 1/2 gallon water",
+      "Optional: melted butter, for basting"
+    ],
+    steps: [
+      "Optional but recommended: mix the brine with water per its package directions, cool to room temperature, then submerge the chicken in a food-safe container and refrigerate 4 hours up to overnight. Remove, rinse, and pat dry.",
+      "Preheat a smoker or pellet grill to 350°F using a mild wood such as hickory, pecan, or fruitwood.",
+      "Gently work your fingers under the breast skin to loosen it from the meat without tearing it, then rub seasoning underneath.",
+      "Pour about three-quarters of a room-temperature Dr Pepper into a vertical chicken stand ('throne'), setting the rest aside.",
+      "Set the chicken upright on the stand, then season the outside generously with the rub. Let it sit 15–30 minutes so the seasoning adheres.",
+      "Smoke upright for roughly 2 hours (for a bird around 5.75 lb). Optionally baste with melted butter once or twice, starting around the 45-minute mark.",
+      "While the chicken cooks, prepare the Dr Pepper BBQ sauce.",
+      "Once the deepest part of the breast reads 150°F, baste with the BBQ sauce — doing this in the final 10–15 minutes keeps the sugar in the sauce from burning.",
+      "Pull the chicken once the breast hits 160°F internally; it will carry over-cook a few more degrees off the heat.",
+      "Rest 15 minutes, then carve and serve."
+    ],
+    source: "Meat Church",
+    sourceUrl: "https://www.meatchurch.com/blogs/recipes/dr-pepper-chicken"
+  },
+  {
+    category: "heart-healthy",
+    title: "Pork Tenderloin and Acorn Squash Traybake with Paprika and Caraway",
+    isMeal: true,
+    servings: "4–6",
+    time: "1 hour",
+    ingredients: [
+      "1½–2 lb acorn squash, halved lengthwise, seeded, cut into 2-inch wedges",
+      "2 medium red onions, root end intact, each cut into 8 wedges",
+      "4 tablespoons extra-virgin olive oil, divided",
+      "Kosher salt and ground black pepper",
+      "2 tablespoons caraway seeds, ground",
+      "2 tablespoons sweet paprika",
+      "2 tablespoons packed brown sugar",
+      "Two 1¼-pound pork tenderloins, trimmed of silver skin",
+      "¼ cup apple cider",
+      "1 tablespoon cider vinegar",
+      "1 tablespoon Dijon mustard",
+      "3 tablespoons salted butter, cut into 3 pieces",
+      "2 tablespoons finely chopped fresh chives"
+    ],
+    steps: [
+      "Heat the oven to 475°F with a rack in the upper-middle position. Coat a rimmed baking sheet with cooking spray.",
+      "Spread the squash and onion wedges on the sheet, drizzle with 2 tablespoons olive oil, season with 1/2 teaspoon each salt and pepper, toss, and spread into an even layer. Roast 20 minutes.",
+      "Meanwhile, stir together the ground caraway, paprika, brown sugar, and 1/2 teaspoon each salt and pepper in a small bowl. Rub each tenderloin with 1 tablespoon olive oil, then coat on all sides with the spice mixture, pressing so it adheres.",
+      "Pull the baking sheet from the oven, flip the vegetables, and push them to the edges. Set the tenderloins in the center, spaced evenly. Return to the oven and roast until the pork reaches 135°F in the center and a skewer slides easily into the squash, about 18–20 more minutes.",
+      "Move the tenderloins to a cutting board and the vegetables to a serving platter. Add the cider, vinegar, and mustard to the hot baking sheet, scraping up the browned bits. Whisk in the butter and chives until the butter melts, then season to taste.",
+      "Slice the pork and arrange it on the platter with the vegetables. Spoon the sauce and any resting juices over the top before serving."
+    ]
+  },
+  {
+    category: "american",
+    title: "Sticky Chicken with Pine Nuts & Mint",
+    isMeal: true,
+    servings: "4–6",
+    time: "~45–60 min, plus optional chilling time",
+    ingredients: [
+      "1 kg (2 lb 4 oz) skin-on chicken thigh fillets (or start with 1.2kg/2lb 12oz bone-in thighs if filleting yourself)",
+      "2 tablespoons olive oil",
+      "1 tablespoon sea salt flakes (kosher salt)",
+      "A big handful of fresh mint, leaves picked and chopped",
+      "Freshly ground black pepper",
+      "— For the double duty sauce —",
+      "2 lemons, sliced in half",
+      "70g (2½oz) pine nuts",
+      "100ml (3½fl oz / generous 1/3 cup) olive oil",
+      "4 tablespoons runny honey",
+      "4 garlic cloves, finely chopped",
+      "2 teaspoons ground cinnamon"
+    ],
+    steps: [
+      "Toss the chicken thighs in a large bowl with the olive oil, salt, and a few grinds of pepper until well coated. If time allows, refrigerate a few hours to let the salt work into the meat; otherwise, start cooking right away.",
+      "Set up the grill for indirect heat — a small fire in the center with a fire-free border around it — aiming for a lid temperature near 180°C (356°F).",
+      "Set the chicken in the fire-free outer zone, close the lid, and cook gently for 30–40 minutes, turning halfway, until the internal temperature reaches 60°C (140°F). At the same time, grill the halved lemons cut-side down for 10–15 minutes until deeply caramelized, then remove and set aside.",
+      "Once the chicken has had its initial cook, open the lid and set a small, heavy pan directly over the fire. Add the pine nuts and toast for a couple of minutes until they darken a shade or two, then transfer to a bowl.",
+      "Add the olive oil, honey, garlic, and cinnamon to the same pan, then squeeze in the juice from the grilled lemons. Season with salt and pepper and stir until everything melts together. Pour about two-thirds of this sauce over the toasted pine nuts and set aside as a dressing."
+    ],
+    note: "The source page was cut off after this point — the final steps (glazing the chicken with the remaining sauce and finishing with mint) weren't captured."
+  },
+  {
+    category: "american",
+    title: "Pork Tenderloin and Acorn Squash Traybake with Paprika and Caraway",
+    isMeal: true,
+    servings: "4–6",
+    time: "1 hour",
+    ingredients: [
+      "1½–2 lb acorn squash, halved lengthwise, seeded, cut into 2-inch wedges",
+      "2 medium red onions, root end intact, each cut into 8 wedges",
+      "4 tablespoons extra-virgin olive oil, divided",
+      "Kosher salt and ground black pepper",
+      "2 tablespoons caraway seeds, ground",
+      "2 tablespoons sweet paprika",
+      "2 tablespoons packed brown sugar",
+      "Two 1¼-pound pork tenderloins, trimmed of silver skin",
+      "¼ cup apple cider",
+      "1 tablespoon cider vinegar",
+      "1 tablespoon Dijon mustard",
+      "3 tablespoons salted butter, cut into 3 pieces",
+      "2 tablespoons finely chopped fresh chives"
+    ],
+    steps: [
+      "Heat the oven to 475°F with a rack in the upper-middle position. Coat a rimmed baking sheet with cooking spray.",
+      "Spread the squash and onion wedges on the sheet, drizzle with 2 tablespoons olive oil, season with 1/2 teaspoon each salt and pepper, toss, and spread into an even layer. Roast 20 minutes.",
+      "Meanwhile, stir together the ground caraway, paprika, brown sugar, and 1/2 teaspoon each salt and pepper in a small bowl. Rub each tenderloin with 1 tablespoon olive oil, then coat on all sides with the spice mixture, pressing so it adheres.",
+      "Pull the baking sheet from the oven, flip the vegetables, and push them to the edges. Set the tenderloins in the center, spaced evenly. Return to the oven and roast until the pork reaches 135°F in the center and a skewer slides easily into the squash, about 18–20 more minutes.",
+      "Move the tenderloins to a cutting board and the vegetables to a serving platter. Add the cider, vinegar, and mustard to the hot baking sheet, scraping up the browned bits. Whisk in the butter and chives until the butter melts, then season to taste.",
+      "Slice the pork and arrange it on the platter with the vegetables. Spoon the sauce and any resting juices over the top before serving."
+    ]
+  },
+  {
+    category: "american",
+    title: "Hot Honey Garlic Parm Chicken Tenders",
+    servings: "",
+    time: "",
+    ingredients: [
+      "Chicken tenders",
+      "Buttermilk",
+      "Hot sauce",
+      "Pickle juice",
+      "Cajun seasoning (recipe used PoggioliEats Cajun Seasoning)",
+      "Potato starch",
+      "All-purpose flour",
+      "Frying oil",
+      "Butter",
+      "Garlic",
+      "Honey",
+      "Garlic powder",
+      "Parmesan, freshly shaved",
+      "Fresh parsley",
+      "Ranch, for dipping"
+    ],
+    steps: [
+      "Marinate the chicken tenders in buttermilk, hot sauce, pickle juice, and the Cajun seasoning.",
+      "Mix 2 parts potato starch with 1 part flour and season generously with more Cajun seasoning to make the dredge.",
+      "Coat the chicken in the dredge, dip it back into the marinade, then coat it in the dredge again. Press the coating on firmly and let it rest for 10 minutes.",
+      "Fry at 300°F for 6–8 minutes, then remove and let rest briefly.",
+      "Raise the oil to 350–375°F and fry again for 3–4 minutes until deeply golden and extra crispy. Transfer to a wire rack.",
+      "For the sauce, combine butter, garlic, hot sauce, honey, and garlic powder in a pan over low heat, stirring until smooth and combined.",
+      "Brush the hot honey garlic sauce generously over the crispy tenders.",
+      "Finish with plenty of freshly shaved Parmesan and parsley.",
+      "Serve hot with ranch for dipping."
+    ],
+    note: "Exact ingredient amounts weren't included in the source post — just the ingredient list and steps."
+  },
+  {
+    category: "sauces",
+    title: "Lemon Buffalo Garlic",
+    ingredients: [
+      "¾ cup + 2 tablespoons hot sauce",
+      "7 tablespoons melted butter",
+      "3½ tablespoons honey",
+      "3½ teaspoons garlic powder",
+      "1¾ teaspoons paprika",
+      "2 tablespoons lemon juice",
+      "Cayenne pepper or red pepper flakes, to taste"
+    ],
+    steps: [
+      "Combine all ingredients in a saucepan and whisk until well blended.",
+      "Simmer over low heat for 2–3 minutes, stirring occasionally.",
+      "Pour over freshly cooked wings and toss until glossy and evenly coated."
+    ]
+  }
+];
 
 // Give every built-in recipe a stable id (category:index) plus default
 // visibility/ownership fields. This id format matches what the app already
@@ -2070,7 +2081,7 @@ function renderRecipeList(category, containerId){
           ${r.servings ? `<span>Serves <strong>${r.servings}</strong></span>` : ''}
           ${r.time ? `<span>Time <strong>${r.time}</strong></span>` : ''}
           ${visBadge}
-          ${r._addedByName ? `<span class="added-by">Added by ${r._addedByName}</span>` : ''}
+          ${r._addedByName ? `<span class="added-by">Added by ${r._addedByName}${r._addedByEmail ? ' (' + r._addedByEmail + ')' : ''}</span>` : ''}
         </div>
         <div class="recipe-body">
           <h3>Ingredients</h3>
@@ -2864,7 +2875,8 @@ setTimeout(function(){
       visibility: data.visibility || "public",
       ownerUid: data.addedBy || null,
       _docId: docSnap.id,
-      _addedByName: data.addedByName || ""
+      _addedByName: data.addedByName || "",
+      _addedByEmail: data.addedByEmail || ""
     });
   }
 
@@ -2881,6 +2893,21 @@ setTimeout(function(){
       const [publicSnap, mineSnap] = await Promise.all([getDocs(publicQuery), getDocs(mineQuery)]);
       publicSnap.forEach(addCommunityRecipeToData);
       mineSnap.forEach(addCommunityRecipeToData);
+
+      // One-time cleanup: backfill addedByName/addedByEmail on any of my own
+      // recipes saved before those fields existed. Safe to run every load —
+      // it only touches docs that are already mine and already missing data.
+      mineSnap.forEach(async (docSnap) => {
+        const data = docSnap.data();
+        if(!data.addedByName || !data.addedByEmail){
+          try{
+            await updateDoc(doc(db, "recipes", docSnap.id), {
+              addedByName: currentUser.displayName || data.addedByName || '',
+              addedByEmail: currentUser.email || data.addedByEmail || ''
+            });
+          } catch(e){ console.error('Attribution backfill failed for', docSnap.id, e); }
+        }
+      });
     } catch(err){
       console.error("Couldn't load community recipes:", err);
     }
@@ -2894,6 +2921,7 @@ setTimeout(function(){
     if(user){
       await loadMyData(user.uid);
       await loadCommunityRecipes();
+      updateMigrateButtonVisibility();
       // Refresh whichever recipe list is currently open so new items appear
       const screenMap = window.RECIPE_SCREEN_MAP || {};
       Object.keys(screenMap).forEach(route => {
@@ -3357,6 +3385,7 @@ Ingredients and steps should read naturally, without numbering. If a field truly
           title, servings, time, isMeal, ingredients, steps, visibility,
           addedBy: currentUser.uid,
           addedByName: currentUser.displayName || '',
+          addedByEmail: currentUser.email || '',
           createdAt: serverTimestamp()
         });
 
@@ -3365,7 +3394,8 @@ Ingredients and steps should read naturally, without numbering. If a field truly
           title, servings, time, isMeal, ingredients, steps,
           visibility, ownerUid: currentUser.uid,
           _docId: docRef.id,
-          _addedByName: currentUser.displayName || ''
+          _addedByName: currentUser.displayName || '',
+          _addedByEmail: currentUser.email || ''
         });
       }
 
@@ -3435,6 +3465,7 @@ Ingredients and steps should read naturally, without numbering. If a field truly
         visibility: 'private',
         addedBy: currentUser.uid,
         addedByName: currentUser.displayName || '',
+        addedByEmail: currentUser.email || '',
         createdAt: serverTimestamp()
       });
       window.RECIPES_DATA[category].push({
@@ -3443,7 +3474,8 @@ Ingredients and steps should read naturally, without numbering. If a field truly
         isMeal: recipe.isMeal, ingredients: recipe.ingredients.slice(), steps: recipe.steps.slice(),
         visibility: 'private', ownerUid: currentUser.uid,
         _docId: docRef.id,
-        _addedByName: currentUser.displayName || ''
+        _addedByName: currentUser.displayName || '',
+        _addedByEmail: currentUser.email || ''
       });
       refreshCategoryIfActive(category);
       alert(`"${recipe.title}" was copied to your recipes as private — edit it anytime from there.`);
@@ -3451,6 +3483,88 @@ Ingredients and steps should read naturally, without numbering. If a field truly
       console.error('Copy failed:', err);
       alert("Couldn't copy that recipe — please try again.");
     }
+  };
+
+  /* ---------- One-time: migrate hardcoded legacy recipes into Firestore ---------- */
+
+  function updateMigrateButtonVisibility(){
+    const btn = document.getElementById('migrateBtn');
+    const label = document.getElementById('migrateLabel');
+    if(!btn || !label) return;
+    const legacy = window.LEGACY_RECIPES || [];
+    const alreadyDone = localStorage.getItem('legacyRecipesMigrated') === '1';
+    const shouldShow = legacy.length > 0 && !alreadyDone;
+    btn.style.display = shouldShow ? '' : 'none';
+    label.style.display = shouldShow ? '' : 'none';
+  }
+
+  window.migrateLegacyRecipes = async function(){
+    if(!currentUser){ window.signInGoogle(); return; }
+    const legacy = window.LEGACY_RECIPES || [];
+    if(legacy.length === 0) return;
+    if(!confirm(`Move ${legacy.length} old recipes into your account as real, editable recipes?`)) return;
+
+    const btn = document.getElementById('migrateBtn');
+    if(btn){ btn.disabled = true; btn.textContent = 'Moving recipes…'; }
+
+    let succeeded = 0;
+    for(const item of legacy){
+      try{
+        const docRef = await addDoc(collection(db, "recipes"), {
+          category: item.category,
+          title: item.title,
+          servings: item.servings || '',
+          time: item.time || '',
+          isMeal: !!item.isMeal,
+          ingredients: item.ingredients || [],
+          steps: item.steps || [],
+          visibility: 'public',
+          addedBy: currentUser.uid,
+          addedByName: currentUser.displayName || 'Ted Desmond',
+          addedByEmail: currentUser.email || 'tdesmond12@gmail.com',
+          createdAt: serverTimestamp(),
+          ...(item.source ? { source: item.source, sourceUrl: item.sourceUrl } : {}),
+          ...(item.note ? { note: item.note } : {})
+        });
+
+        window.RECIPES_DATA[item.category].push({
+          id: item.category + ':f' + docRef.id,
+          title: item.title,
+          servings: item.servings || '',
+          time: item.time || '',
+          isMeal: !!item.isMeal,
+          ingredients: item.ingredients || [],
+          steps: item.steps || [],
+          visibility: 'public',
+          ownerUid: currentUser.uid,
+          _docId: docRef.id,
+          _addedByName: currentUser.displayName || 'Ted Desmond',
+          _addedByEmail: currentUser.email || 'tdesmond12@gmail.com',
+          ...(item.source ? { source: item.source, sourceUrl: item.sourceUrl } : {}),
+          ...(item.note ? { note: item.note } : {})
+        });
+        succeeded++;
+      } catch(err){
+        console.error('Migration failed for', item.title, err);
+      }
+    }
+
+    window.LEGACY_RECIPES = []; // spent — don't offer to migrate again this session
+    localStorage.setItem('legacyRecipesMigrated', '1');
+    updateMigrateButtonVisibility();
+    if(document.getElementById('accountMenu')) document.getElementById('accountMenu').classList.remove('open');
+
+    // Refresh whichever recipe category page is currently open
+    const active = document.querySelector('.screen.active');
+    if(active && active.id && active.id.indexOf('screen-recipe-') === 0){
+      const route = active.id.replace('screen-', '');
+      const screenMap = window.RECIPE_SCREEN_MAP || {};
+      if(screenMap[route] && window.renderRecipeList){
+        window.renderRecipeList(screenMap[route], route + '-content');
+      }
+    }
+
+    alert(`Done — moved ${succeeded} of ${legacy.length} recipes into your account. They're now yours to edit, delete, or make private.`);
   };
 </script>
 
