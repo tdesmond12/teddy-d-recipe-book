@@ -1423,7 +1423,7 @@
   // Version check: compares this page against version.txt (fetched fresh,
   // never cached) and force-reloads if they don't match, so updates reach
   // people without needing a manual cache clear.
-  var PAGE_BUILD_VERSION = "2026-09-19-16";
+  var PAGE_BUILD_VERSION = "2026-09-19-17";
   (function(){
     try{
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
@@ -1494,6 +1494,7 @@
   <button class="account-menu-item" onclick="window.openMyFavorites && window.openMyFavorites()">My Favorites</button>
   <button class="account-menu-item" onclick="window.openMyHistory && window.openMyHistory()">My History</button>
   <button class="account-menu-item" onclick="window.openMyRecipes && window.openMyRecipes()">My Recipes</button>
+  <button class="account-menu-item" onclick="window.openMailbox && window.openMailbox()">📬 Mailbox</button>
   <div class="account-menu-section-label">Recipe view</div>
   <button class="account-menu-item view-mode-item" id="viewModePublic" onclick="window.setRecipeViewMode('public')">
     <span>Public only</span><span class="check-mark">✓</span>
@@ -1514,6 +1515,46 @@
       <button class="cart-close" onclick="window.closeMyRecipes()" aria-label="Close">&times;</button>
     </div>
     <div id="myRecipesSheetBody" class="cart-sheet-body"></div>
+  </div>
+</div>
+
+<div id="shareFallbackOverlay" class="cart-overlay" onclick="if(event.target===this) window.closeShareFallback()">
+  <div class="cart-sheet" style="max-width:320px;">
+    <div class="cart-sheet-head">
+      <h2>Share Recipe</h2>
+      <button class="cart-close" onclick="window.closeShareFallback()" aria-label="Close">&times;</button>
+    </div>
+    <div class="cart-sheet-body">
+      <button class="form-save-btn" style="margin-bottom:10px;" onclick="window.printRecipe()">🖨 Print</button>
+      <button class="form-save-btn" onclick="window.emailRecipe()">✉️ Email</button>
+    </div>
+  </div>
+</div>
+
+<div id="sendToUserOverlay" class="cart-overlay" onclick="if(event.target===this) window.closeSendToUser()">
+  <div class="cart-sheet" style="max-width:360px;">
+    <div class="cart-sheet-head">
+      <h2>Send to User</h2>
+      <button class="cart-close" onclick="window.closeSendToUser()" aria-label="Close">&times;</button>
+    </div>
+    <div class="cart-sheet-body">
+      <div class="form-field">
+        <label>Recipient's exact email address</label>
+        <input type="text" id="sendToUserEmail" placeholder="name@example.com" autocomplete="off" autocapitalize="off">
+      </div>
+      <div id="sendToUserStatus" class="ai-status-text"></div>
+      <button class="form-save-btn" onclick="window.submitSendToUser()">Send</button>
+    </div>
+  </div>
+</div>
+
+<div id="mailboxOverlay" class="cart-overlay" onclick="if(event.target===this) window.closeMailbox()">
+  <div class="cart-sheet">
+    <div class="cart-sheet-head">
+      <h2>Mailbox</h2>
+      <button class="cart-close" onclick="window.closeMailbox()" aria-label="Close">&times;</button>
+    </div>
+    <div id="mailboxSheetBody" class="cart-sheet-body"></div>
   </div>
 </div>
 
@@ -2032,6 +2073,10 @@ function renderRecipeList(category, containerId){
         <div class="recipe-social" id="${socialDomId}" data-key="${r.id}">
           <span class="social-signin-hint">Sign in to rate, save, or log this recipe</span>
         </div>
+        <div class="owner-actions">
+          <button class="social-btn" onclick="window.shareRecipe('${r.id}')">📤 Share</button>
+          <button class="social-btn" onclick="window.openSendToUser('${r.id}')" aria-label="Send to another user">✈️ Send to User</button>
+        </div>
         ${isOwner ? `<div class="owner-actions">
           <button class="social-btn ${r.isMeal ? 'active' : ''}" onclick="window.toggleRecipeMeal('${r.id}')">${r.isMeal ? '🍽 In Dinner Picker' : '🍽 Add to Dinner Picker'}</button>
           <button class="social-btn" onclick="window.toggleRecipeVisibility('${r.id}')">${r.visibility === 'private' ? '🌐 Make Public' : '🔒 Make Private'}</button>
@@ -2135,6 +2180,56 @@ function findRecipeById(id){
   return { category: null, recipe: null };
 }
 window.findRecipeById = findRecipeById;
+
+function formatRecipeForSharing(r){
+  let text = r.title + '\n\n';
+  if(r.servings) text += 'Servings: ' + r.servings + '\n';
+  if(r.time) text += 'Time: ' + r.time + '\n';
+  text += '\nIngredients:\n' + r.ingredients.map(i => '- ' + i).join('\n');
+  text += '\n\nSteps:\n' + r.steps.map((s, idx) => (idx + 1) + '. ' + s).join('\n');
+  if(r.source) text += '\n\nSource: ' + r.source + (r.sourceUrl ? ' (' + r.sourceUrl + ')' : '');
+  return text;
+}
+
+window.shareRecipe = async function(id){
+  const { recipe } = findRecipeById(id);
+  if(!recipe) return;
+  const text = formatRecipeForSharing(recipe);
+  if(navigator.share){
+    try{
+      await navigator.share({ title: recipe.title, text });
+    } catch(e){ /* user cancelled the share sheet — no-op */ }
+  } else {
+    window.openShareFallback(id);
+  }
+};
+
+window.openShareFallback = function(id){
+  window._shareFallbackId = id;
+  document.getElementById('shareFallbackOverlay').classList.add('open');
+};
+window.closeShareFallback = function(){
+  document.getElementById('shareFallbackOverlay').classList.remove('open');
+};
+window.printRecipe = function(){
+  const { recipe } = findRecipeById(window._shareFallbackId);
+  if(!recipe) return;
+  const w = window.open('', '_blank');
+  if(!w) return;
+  const escaped = formatRecipeForSharing(recipe).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  w.document.write(`<html><head><title>${recipe.title}</title></head><body><pre style="font-family:Georgia, serif; white-space:pre-wrap; font-size:15px; line-height:1.5;">${escaped}</pre></body></html>`);
+  w.document.close();
+  w.print();
+  window.closeShareFallback();
+};
+window.emailRecipe = function(){
+  const { recipe } = findRecipeById(window._shareFallbackId);
+  if(!recipe) return;
+  const subject = encodeURIComponent(recipe.title);
+  const body = encodeURIComponent(formatRecipeForSharing(recipe));
+  window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  window.closeShareFallback();
+};
 
 function difficultyDotsDisplay(value){
   let out = '';
@@ -2821,6 +2916,16 @@ setTimeout(function(){
         ratings: {}
       }, { merge: true });
     }
+    // Keep a small public-facing directory entry so other users can look this
+    // account up by email when sending a recipe (their private user doc stays private).
+    try{
+      await setDoc(doc(db, "userDirectory", uid), {
+        email: currentUser.email || "",
+        displayName: currentUser.displayName || ""
+      }, { merge: true });
+    } catch(err){
+      console.error("Couldn't update user directory entry:", err);
+    }
   }
 
   function renderAuthUI(){
@@ -3177,6 +3282,198 @@ setTimeout(function(){
   };
   window.closeMyRecipes = function(){
     document.getElementById('myRecipesOverlay').classList.remove('open');
+  };
+
+  /* ---------- Send to User ---------- */
+
+  let sendToUserRecipeId = null;
+
+  window.openSendToUser = function(id){
+    if(!currentUser){ window.signInGoogle(); return; }
+    sendToUserRecipeId = id;
+    document.getElementById('sendToUserEmail').value = '';
+    document.getElementById('sendToUserStatus').textContent = '';
+    document.getElementById('sendToUserOverlay').classList.add('open');
+  };
+  window.closeSendToUser = function(){
+    document.getElementById('sendToUserOverlay').classList.remove('open');
+  };
+
+  window.submitSendToUser = async function(){
+    if(!currentUser || !sendToUserRecipeId) return;
+    const email = (document.getElementById('sendToUserEmail').value || '').trim();
+    const status = document.getElementById('sendToUserStatus');
+    if(!email){ status.textContent = 'Enter an email address.'; return; }
+    status.textContent = 'Looking up recipient…';
+    try{
+      const dirQuery = query(collection(db, 'userDirectory'), where('email', '==', email));
+      const snap = await getDocs(dirQuery);
+      if(snap.empty){
+        status.textContent = 'No such recipient exists.';
+        return;
+      }
+      const toUid = snap.docs[0].id;
+      if(toUid === currentUser.uid){
+        status.textContent = "That's your own account — pick someone else.";
+        return;
+      }
+
+      const { recipe } = recipeFromKey(sendToUserRecipeId);
+      if(!recipe){ status.textContent = 'Recipe not found.'; return; }
+
+      await addDoc(collection(db, 'mail'), {
+        toUid,
+        toEmail: email,
+        fromUid: currentUser.uid,
+        fromName: currentUser.displayName || '',
+        fromEmail: currentUser.email || '',
+        recipe: {
+          title: recipe.title,
+          servings: recipe.servings || '',
+          time: recipe.time || '',
+          isMeal: !!recipe.isMeal,
+          ingredients: recipe.ingredients || [],
+          steps: recipe.steps || [],
+          source: recipe.source || '',
+          sourceUrl: recipe.sourceUrl || '',
+          difficulty: recipe.difficulty || 0,
+          originalAddedByName: recipe._originalAddedByName || recipe._addedByName || '',
+          originalAddedByEmail: recipe._originalAddedByEmail || recipe._addedByEmail || '',
+          category: (recipe.categories && recipe.categories[0]) || ''
+        },
+        read: false,
+        sentAt: serverTimestamp()
+      });
+
+      status.textContent = 'Sent!';
+      setTimeout(() => window.closeSendToUser(), 900);
+    } catch(err){
+      console.error('Send failed:', err);
+      status.textContent = "Couldn't send — please try again.";
+    }
+  };
+
+  /* ---------- Mailbox ---------- */
+
+  window.openMailbox = async function(){
+    closeAccountMenu();
+    const body = document.getElementById('mailboxSheetBody');
+    body.innerHTML = `<p style="font-size:13px; color:var(--ink-soft);">Loading…</p>`;
+    document.getElementById('mailboxOverlay').classList.add('open');
+    if(!currentUser) return;
+
+    try{
+      const mailQuery = query(collection(db, 'mail'), where('toUid', '==', currentUser.uid));
+      const snap = await getDocs(mailQuery);
+      if(snap.empty){
+        body.innerHTML = `<div class="empty-state"><div class="stamp">Your mailbox is empty</div><p>Recipes other users send you will show up here.</p></div>`;
+        window._mailboxItems = [];
+        return;
+      }
+
+      const items = [];
+      snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+      items.sort((a, b) => {
+        const ta = a.sentAt && a.sentAt.toMillis ? a.sentAt.toMillis() : 0;
+        const tb = b.sentAt && b.sentAt.toMillis ? b.sentAt.toMillis() : 0;
+        return tb - ta;
+      });
+      window._mailboxItems = items;
+
+      let html = '';
+      items.forEach(item => {
+        const r = item.recipe || {};
+        html += `<details class="recipe-card">
+          <summary>
+            <span class="rs-text">
+              <span class="rs-title">${r.title || 'Untitled recipe'}</span>
+              <span class="rs-desc">From ${item.fromName || item.fromEmail || 'someone'}</span>
+            </span>
+            <span class="chevron-icon">&rsaquo;</span>
+          </summary>
+          <div class="recipe-expand">
+            <div class="recipe-meta">
+              ${r.servings ? `<span>Serves <strong>${r.servings}</strong></span>` : ''}
+              ${r.time ? `<span>Time <strong>${r.time}</strong></span>` : ''}
+            </div>
+            <div class="recipe-body">
+              <h3>Ingredients</h3>
+              <ul>${(r.ingredients || []).map(i => `<li>${i}</li>`).join('')}</ul>
+              <h3>Steps</h3>
+              <ol>${(r.steps || []).map(s => `<li>${s}</li>`).join('')}</ol>
+            </div>
+            ${r.source ? `<div class="recipe-source">Adapted from ${r.sourceUrl ? `<a href="${r.sourceUrl}" target="_blank" rel="noopener">${r.source}</a>` : r.source}</div>` : ''}
+            <div class="owner-actions">
+              <button class="social-btn" onclick="window.copyMailItemToMine('${item.id}')">📋 Copy to My Recipes</button>
+              <button class="social-btn danger" onclick="window.dismissMailItem('${item.id}')">🗑 Dismiss</button>
+            </div>
+          </div>
+        </details>`;
+      });
+      body.innerHTML = html;
+    } catch(err){
+      console.error('Mailbox load failed:', err);
+      body.innerHTML = `<div class="empty-state"><div class="stamp">Couldn't load mailbox</div><p>Please try again.</p></div>`;
+    }
+  };
+
+  window.closeMailbox = function(){
+    document.getElementById('mailboxOverlay').classList.remove('open');
+  };
+
+  window.copyMailItemToMine = async function(mailId){
+    if(!currentUser) return;
+    const item = (window._mailboxItems || []).find(m => m.id === mailId);
+    if(!item) return;
+    const r = item.recipe || {};
+    const category = (r.category && window.RECIPES_DATA[r.category]) ? r.category : 'american';
+    try{
+      const docRef = await addDoc(collection(db, "recipes"), {
+        category,
+        categories: [category],
+        title: r.title, servings: r.servings || '', time: r.time || '',
+        isMeal: !!r.isMeal, ingredients: r.ingredients || [], steps: r.steps || [],
+        source: r.source || '', sourceUrl: r.sourceUrl || '',
+        difficulty: r.difficulty || 0,
+        visibility: 'private',
+        addedBy: currentUser.uid,
+        addedByName: currentUser.displayName || '',
+        addedByEmail: currentUser.email || '',
+        originalAddedByName: r.originalAddedByName || '',
+        originalAddedByEmail: r.originalAddedByEmail || '',
+        createdAt: serverTimestamp()
+      });
+      window.RECIPES_DATA[category].push({
+        id: category + ':f' + docRef.id,
+        title: r.title, servings: r.servings || '', time: r.time || '',
+        isMeal: !!r.isMeal, ingredients: (r.ingredients || []).slice(), steps: (r.steps || []).slice(),
+        source: r.source || '', sourceUrl: r.sourceUrl || '',
+        difficulty: r.difficulty || 0,
+        visibility: 'private', ownerUid: currentUser.uid,
+        categories: [category],
+        _docId: docRef.id,
+        _addedByName: currentUser.displayName || '',
+        _addedByEmail: currentUser.email || '',
+        _originalAddedByName: r.originalAddedByName || '',
+        _originalAddedByEmail: r.originalAddedByEmail || ''
+      });
+      alert(`"${r.title}" was copied to your recipes as private — edit it anytime from there.`);
+      refreshActiveRecipeScreen();
+    } catch(err){
+      console.error('Copy from mailbox failed:', err);
+      alert("Couldn't copy that recipe — please try again.");
+    }
+  };
+
+  window.dismissMailItem = async function(mailId){
+    if(!currentUser) return;
+    try{
+      await deleteDoc(doc(db, 'mail', mailId));
+      window.openMailbox();
+    } catch(err){
+      console.error('Dismiss failed:', err);
+      alert("Couldn't remove that — please try again.");
+    }
   };
 
   /* ---------- Add Recipe (manual / photo / link) ---------- */
