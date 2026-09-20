@@ -1423,7 +1423,7 @@
   // Version check: compares this page against version.txt (fetched fresh,
   // never cached) and force-reloads if they don't match, so updates reach
   // people without needing a manual cache clear.
-  var PAGE_BUILD_VERSION = "2026-09-19-17";
+  var PAGE_BUILD_VERSION = "2026-09-19-19";
   (function(){
     try{
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
@@ -2807,7 +2807,7 @@ setTimeout(function(){
     serverTimestamp, collection, getDocs, addDoc, query, where
   } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
   import {
-    initializeAppCheck, ReCaptchaV3Provider
+    initializeAppCheck, ReCaptchaEnterpriseProvider
   } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app-check.js";
   import {
     getAI, getGenerativeModel, GoogleAIBackend
@@ -2828,15 +2828,16 @@ setTimeout(function(){
   const provider = new GoogleAuthProvider();
 
   // ---- AI Logic setup (photo/link recipe import) ----
-  // Replace with the reCAPTCHA v3 SITE key from Firebase Console → App Check.
-  const RECAPTCHA_SITE_KEY = "6LesnMQtAAAAAKRHhd1qHKuCCJ6O39UObZpP-wk2";
+  // reCAPTCHA ENTERPRISE site key (from Google Cloud Console → reCAPTCHA Enterprise),
+  // matching how this app is registered in Firebase Console → App Check → Apps.
+  const RECAPTCHA_SITE_KEY = "6LcrgsUtAAAAABT3uCl9kshE5G-snU4BkHPn7xUZ";
   const AI_CONFIGURED = RECAPTCHA_SITE_KEY.indexOf("REPLACE_WITH") === -1;
   let aiModel = null;
   let aiModelWithUrlContext = null;
   if(AI_CONFIGURED){
     try{
       initializeAppCheck(fbApp, {
-        provider: new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY),
+        provider: new ReCaptchaEnterpriseProvider(RECAPTCHA_SITE_KEY),
         isTokenAutoRefreshEnabled: true
       });
       const ai = getAI(fbApp, { backend: new GoogleAIBackend() });
