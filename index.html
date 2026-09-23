@@ -662,8 +662,55 @@
     font-weight:600;
     color:var(--forest-deep);
     margin:18px 4px 8px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
   }
   .fav-group-title:first-child{ margin-top:2px; }
+  .cat-group-actions{ display:flex; gap:4px; flex-shrink:0; }
+  .cat-mini-btn{
+    background:none;
+    border:none;
+    font-size:15px;
+    line-height:1;
+    padding:4px 6px;
+    border-radius:100px;
+    cursor:pointer;
+  }
+  .cat-mini-btn:hover{ background:var(--paper); }
+  .cat-picker-list{ display:flex; flex-direction:column; gap:6px; margin-bottom:6px; }
+  .cat-picker-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    width:100%;
+    text-align:left;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:11px 14px;
+    font-family:'Karla', sans-serif;
+    font-size:14.5px;
+    font-weight:600;
+    color:var(--ink);
+    cursor:pointer;
+  }
+  .cat-picker-row.checked{ border-color:var(--forest); background:var(--card); }
+  .cat-picker-check{
+    width:20px;
+    height:20px;
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border:1.5px solid var(--line);
+    border-radius:5px;
+    color:var(--forest);
+    font-weight:800;
+    font-size:13px;
+  }
+  .cat-picker-row.checked .cat-picker-check{ border-color:var(--forest); background:rgba(47,82,51,0.1); }
   .history-row-meta{
     font-size:12px;
     color:var(--ink-soft);
@@ -688,6 +735,45 @@
   .add-recipe-btn:hover{ background:var(--forest-deep); }
 
   .form-field{ margin-bottom:14px; }
+  .recents-wrap{ margin-bottom:16px; }
+  .recents-label{
+    font-family:'Karla', sans-serif;
+    font-size:12px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    color:var(--ink-soft);
+    margin-bottom:8px;
+  }
+  .recents-chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .recipient-chip{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:100px;
+    padding:7px 14px;
+    font-family:'Karla', sans-serif;
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink);
+    cursor:pointer;
+  }
+  .recipient-chip:hover{ border-color:var(--forest); color:var(--forest); }
+
+  .blocked-user-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:12px 4px;
+    border-bottom:1px solid var(--line);
+  }
+  .blocked-user-row:last-child{ border-bottom:none; }
+  .blocked-user-name{
+    font-family:'Karla', sans-serif;
+    font-size:14.5px;
+    font-weight:700;
+    color:var(--ink);
+  }
   .form-field label{
     display:block;
     font-size:12.5px;
@@ -1470,7 +1556,7 @@
   // Version check: compares this page against version.txt (fetched fresh,
   // never cached) and force-reloads if they don't match, so updates reach
   // people without needing a manual cache clear.
-  var PAGE_BUILD_VERSION = "2026-09-19-25";
+  var PAGE_BUILD_VERSION = "2026-09-19-28";
   (function(){
     try{
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
@@ -1543,6 +1629,8 @@
   <button class="account-menu-item" onclick="window.openMyFavorites && window.openMyFavorites()">My Favorites</button>
   <button class="account-menu-item" onclick="window.openMyHistory && window.openMyHistory()">My History</button>
   <button class="account-menu-item" onclick="window.openMyRecipes && window.openMyRecipes()">My Recipes</button>
+  <button class="account-menu-item" onclick="window.openMyCategories && window.openMyCategories()">🗂 My Categories</button>
+  <button class="account-menu-item" onclick="window.openBlockedUsers && window.openBlockedUsers()">🚫 Blocked Users</button>
   <div class="account-menu-section-label">Recipe view</div>
   <button class="account-menu-item view-mode-item" id="viewModePublic" onclick="window.setRecipeViewMode('public')">
     <span>Public only</span><span class="check-mark">✓</span>
@@ -1586,12 +1674,51 @@
       <button class="cart-close" onclick="window.closeSendToUser()" aria-label="Close">&times;</button>
     </div>
     <div class="cart-sheet-body">
+      <div id="sendToUserRecents" class="recents-wrap" style="display:none;"></div>
       <div class="form-field">
         <label>Recipient's exact email address</label>
         <input type="text" id="sendToUserEmail" placeholder="name@example.com" autocomplete="off" autocapitalize="off">
       </div>
       <div id="sendToUserStatus" class="ai-status-text"></div>
       <button class="form-save-btn" onclick="window.submitSendToUser()">Send</button>
+    </div>
+  </div>
+</div>
+
+<div id="myCategoriesOverlay" class="cart-overlay" onclick="if(event.target===this) window.closeMyCategories()">
+  <div class="cart-sheet">
+    <div class="cart-sheet-head">
+      <h2>My Categories</h2>
+      <button class="cart-close" onclick="window.closeMyCategories()" aria-label="Close">&times;</button>
+    </div>
+    <div class="cart-sheet-body">
+      <div class="form-field" style="display:flex; gap:8px; align-items:flex-end;">
+        <div style="flex:1;">
+          <label>New category name</label>
+          <input type="text" id="newCategoryName" placeholder="e.g. Game Day" autocomplete="off">
+        </div>
+        <button class="form-save-btn" style="width:auto; padding:12px 18px; margin:0;" onclick="window.addCustomCategory()">Add</button>
+      </div>
+      <div id="myCategoriesListBody"></div>
+    </div>
+  </div>
+</div>
+
+<div id="categoryPickerOverlay" class="cart-overlay" onclick="if(event.target===this) window.closeCategoryPicker()">
+  <div class="cart-sheet" style="max-width:360px;">
+    <div class="cart-sheet-head">
+      <h2>Tag to Category</h2>
+      <button class="cart-close" onclick="window.closeCategoryPicker()" aria-label="Close">&times;</button>
+    </div>
+    <div class="cart-sheet-body">
+      <div id="categoryPickerBody"></div>
+      <div class="form-field" style="display:flex; gap:8px; align-items:flex-end; margin-top:6px;">
+        <div style="flex:1;">
+          <label>Create new category</label>
+          <input type="text" id="categoryPickerNewName" placeholder="e.g. Game Day" autocomplete="off">
+        </div>
+        <button class="form-save-btn" style="width:auto; padding:12px 18px; margin:0;" onclick="window.addCategoryFromPicker()">Add</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1603,6 +1730,16 @@
       <button class="cart-close" onclick="window.closeMailbox()" aria-label="Close">&times;</button>
     </div>
     <div id="mailboxSheetBody" class="cart-sheet-body"></div>
+  </div>
+</div>
+
+<div id="blockedUsersOverlay" class="cart-overlay" onclick="if(event.target===this) window.closeBlockedUsers()">
+  <div class="cart-sheet">
+    <div class="cart-sheet-head">
+      <h2>Blocked Users</h2>
+      <button class="cart-close" onclick="window.closeBlockedUsers()" aria-label="Close">&times;</button>
+    </div>
+    <div id="blockedUsersSheetBody" class="cart-sheet-body"></div>
   </div>
 </div>
 
@@ -2841,7 +2978,7 @@ setTimeout(function(){
   } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
   import {
     getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, increment,
-    serverTimestamp, collection, getDocs, addDoc, query, where
+    serverTimestamp, collection, getDocs, addDoc, query, where, arrayUnion, arrayRemove
   } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
   import {
     initializeAppCheck, ReCaptchaEnterpriseProvider
@@ -2895,6 +3032,10 @@ setTimeout(function(){
   let myRatings = {};      // { "category:idx": 1-5 }
   let myCookedCount = {};  // { "category:idx": number }
   let myCookedLast = {};   // { "category:idx": Date }
+  let myRecentRecipients = []; // [{ email, name }] most-recent-first
+  let myBlockedUserIds = [];   // [uid, uid, ...]
+  let myCustomCategories = []; // [{ id, name }] personal folders, private to this user
+  let myCustomCategoryTags = {}; // { categoryId: { "category:idx": true } }
   const avgCache = {};     // { "category:idx": { avg, count } }
 
   window.signInGoogle = async function(){
@@ -2942,11 +3083,19 @@ setTimeout(function(){
       Object.keys(data.cookedLast || {}).forEach(k => {
         myCookedLast[k] = toDateSafe(data.cookedLast[k]);
       });
+      myRecentRecipients = Array.isArray(data.recentRecipients) ? data.recentRecipients : [];
+      myBlockedUserIds = Array.isArray(data.blockedUserIds) ? data.blockedUserIds : [];
+      myCustomCategories = Array.isArray(data.customCategories) ? data.customCategories : [];
+      myCustomCategoryTags = data.customCategoryTags || {};
     } else {
       myFavorites = {};
       myRatings = {};
       myCookedCount = {};
       myCookedLast = {};
+      myRecentRecipients = [];
+      myBlockedUserIds = [];
+      myCustomCategories = [];
+      myCustomCategoryTags = {};
       await setDoc(userDocRef(uid), {
         displayName: currentUser.displayName || "",
         photoURL: currentUser.photoURL || "",
@@ -3142,6 +3291,7 @@ setTimeout(function(){
       <div class="difficulty-row">${difficultyRowHTML(key, difficultyValue, isOwner)}</div>
       <button class="social-btn ${isFav ? 'active' : ''}" onclick="window.toggleFavorite('${key}')">${isFav ? '♥ Saved' : '♡ Save'}</button>
       <button class="social-btn" onclick="window.markCooked('${key}')">🍽 I cooked this</button>
+      <button class="social-btn" onclick="window.openCategoryPicker('${key}')">🗂 Categories</button>
     `;
   }
 
@@ -3189,6 +3339,171 @@ setTimeout(function(){
       btn.textContent = '✓ Logged!';
       setTimeout(() => { btn.textContent = original; }, 1500);
     }
+  };
+
+  /* ---------- Custom categories (personal folders) ---------- */
+
+  window.openMyCategories = function(){
+    closeAccountMenu();
+    document.getElementById('newCategoryName').value = '';
+    renderMyCategoriesList();
+    document.getElementById('myCategoriesOverlay').classList.add('open');
+  };
+  window.closeMyCategories = function(){
+    document.getElementById('myCategoriesOverlay').classList.remove('open');
+  };
+
+  function renderMyCategoriesList(){
+    const body = document.getElementById('myCategoriesListBody');
+    if(!myCustomCategories.length){
+      body.innerHTML = `<div class="empty-state"><div class="stamp">No categories yet</div><p>Create one above, then tag recipes into it from the 🗂 Categories button on any recipe.</p></div>`;
+      return;
+    }
+    let html = '';
+    myCustomCategories.forEach(cat => {
+      const tags = myCustomCategoryTags[cat.id] || {};
+      const keys = Object.keys(tags).filter(k => tags[k]);
+      html += `<div class="fav-group-title">
+        <span>${cat.name}</span>
+        <span class="cat-group-actions">
+          <button class="cat-mini-btn" onclick="window.renameCustomCategory('${cat.id}')" aria-label="Rename">✏️</button>
+          <button class="cat-mini-btn" onclick="window.deleteCustomCategory('${cat.id}')" aria-label="Delete">🗑</button>
+        </span>
+      </div>`;
+      if(!keys.length){
+        html += `<p style="font-size:13px; color:var(--ink-soft); margin:0 0 12px;">No recipes tagged yet.</p>`;
+      } else {
+        keys.forEach(key => {
+          const { recipe } = recipeFromKey(key);
+          if(!recipe) return;
+          html += `<button class="search-result-row" onclick="window.goFromAccountList('${key}', window.closeMyCategories)">
+            <span class="sr-title">${recipe.title}</span>
+          </button>`;
+        });
+      }
+    });
+    body.innerHTML = html;
+  }
+
+  window.addCustomCategory = async function(){
+    if(!currentUser){ window.signInGoogle(); return; }
+    const input = document.getElementById('newCategoryName');
+    const name = (input.value || '').trim();
+    if(!name) return;
+    const cat = { id: 'cat_' + Date.now(), name };
+    myCustomCategories.push(cat);
+    input.value = '';
+    renderMyCategoriesList();
+    try{
+      await updateDoc(userDocRef(currentUser.uid), { customCategories: arrayUnion(cat) });
+    } catch(err){
+      console.error('Create category failed:', err);
+      alert("Couldn't create that category — please try again.");
+    }
+  };
+
+  window.renameCustomCategory = async function(id){
+    const cat = myCustomCategories.find(c => c.id === id);
+    if(!cat) return;
+    const newName = prompt('Rename category:', cat.name);
+    if(!newName || !newName.trim() || newName.trim() === cat.name) return;
+    cat.name = newName.trim();
+    renderMyCategoriesList();
+    try{
+      await updateDoc(userDocRef(currentUser.uid), { customCategories: myCustomCategories });
+    } catch(err){
+      console.error('Rename category failed:', err);
+      alert("Couldn't rename that category — please try again.");
+    }
+  };
+
+  window.deleteCustomCategory = async function(id){
+    const cat = myCustomCategories.find(c => c.id === id);
+    if(!cat) return;
+    if(!confirm(`Delete the "${cat.name}" category? Recipes tagged in it won't be deleted, just untagged.`)) return;
+    myCustomCategories = myCustomCategories.filter(c => c.id !== id);
+    delete myCustomCategoryTags[id];
+    renderMyCategoriesList();
+    try{
+      await updateDoc(userDocRef(currentUser.uid), {
+        customCategories: myCustomCategories,
+        [`customCategoryTags.${id}`]: deleteField()
+      });
+    } catch(err){
+      console.error('Delete category failed:', err);
+      alert("Couldn't delete that category — please try again.");
+    }
+  };
+
+  let categoryPickerKey = null;
+
+  window.openCategoryPicker = function(key){
+    if(!currentUser){ window.signInGoogle(); return; }
+    categoryPickerKey = key;
+    renderCategoryPicker();
+    document.getElementById('categoryPickerOverlay').classList.add('open');
+  };
+  window.closeCategoryPicker = function(){
+    document.getElementById('categoryPickerOverlay').classList.remove('open');
+  };
+
+  function renderCategoryPicker(){
+    const body = document.getElementById('categoryPickerBody');
+    let html = '';
+    if(!myCustomCategories.length){
+      html += `<p style="font-size:13px; color:var(--ink-soft); margin:0 0 14px;">You don't have any categories yet — create one below.</p>`;
+    } else {
+      html += `<div class="cat-picker-list">`;
+      myCustomCategories.forEach(cat => {
+        const tagged = !!(myCustomCategoryTags[cat.id] && myCustomCategoryTags[cat.id][categoryPickerKey]);
+        html += `<button type="button" class="cat-picker-row ${tagged ? 'checked' : ''}" onclick="window.toggleRecipeCategoryTag('${cat.id}')">
+          <span class="cat-picker-check">${tagged ? '✓' : ''}</span>
+          <span>${cat.name}</span>
+        </button>`;
+      });
+      html += `</div>`;
+    }
+    body.innerHTML = html;
+  }
+
+  window.toggleRecipeCategoryTag = async function(catId){
+    if(!currentUser || !categoryPickerKey) return;
+    const key = categoryPickerKey;
+    if(!myCustomCategoryTags[catId]) myCustomCategoryTags[catId] = {};
+    const isTagged = !!myCustomCategoryTags[catId][key];
+    if(isTagged){
+      delete myCustomCategoryTags[catId][key];
+    } else {
+      myCustomCategoryTags[catId][key] = true;
+    }
+    renderCategoryPicker();
+    try{
+      await updateDoc(userDocRef(currentUser.uid), {
+        [`customCategoryTags.${catId}.${key}`]: isTagged ? deleteField() : true
+      });
+    } catch(err){
+      console.error('Tag update failed:', err);
+      alert("Couldn't update that category — please try again.");
+    }
+  };
+
+  window.addCategoryFromPicker = async function(){
+    if(!currentUser){ window.signInGoogle(); return; }
+    const input = document.getElementById('categoryPickerNewName');
+    const name = (input.value || '').trim();
+    if(!name) return;
+    const cat = { id: 'cat_' + Date.now(), name };
+    myCustomCategories.push(cat);
+    input.value = '';
+    try{
+      await updateDoc(userDocRef(currentUser.uid), { customCategories: arrayUnion(cat) });
+    } catch(err){
+      console.error('Create category failed:', err);
+      alert("Couldn't create that category — please try again.");
+      return;
+    }
+    // Immediately tag the current recipe into the freshly created category
+    window.toggleRecipeCategoryTag(cat.id);
   };
 
   /* ---------- Account dropdown, My Favorites, My History ---------- */
@@ -3334,11 +3649,45 @@ setTimeout(function(){
     sendToUserRecipeId = id;
     document.getElementById('sendToUserEmail').value = '';
     document.getElementById('sendToUserStatus').textContent = '';
+    renderRecentRecipients();
     document.getElementById('sendToUserOverlay').classList.add('open');
   };
   window.closeSendToUser = function(){
     document.getElementById('sendToUserOverlay').classList.remove('open');
   };
+
+  function renderRecentRecipients(){
+    const wrap = document.getElementById('sendToUserRecents');
+    if(!wrap) return;
+    if(!myRecentRecipients.length){
+      wrap.innerHTML = '';
+      wrap.style.display = 'none';
+      return;
+    }
+    wrap.style.display = 'block';
+    wrap.innerHTML = `<div class="recents-label">Recent</div>
+      <div class="recents-chips">${myRecentRecipients.map(r =>
+        `<button type="button" class="recipient-chip" onclick="window.pickRecentRecipient('${(r.email||'').replace(/'/g, "\\'")}')">${r.name || r.email}</button>`
+      ).join('')}</div>`;
+  }
+
+  window.pickRecentRecipient = function(email){
+    const input = document.getElementById('sendToUserEmail');
+    input.value = email;
+    input.focus();
+  };
+
+  function saveRecentRecipient(email, name){
+    const lower = (email || '').toLowerCase();
+    myRecentRecipients = myRecentRecipients.filter(r => (r.email || '').toLowerCase() !== lower);
+    myRecentRecipients.unshift({ email, name: name || email });
+    myRecentRecipients = myRecentRecipients.slice(0, 8);
+    if(currentUser){
+      updateDoc(userDocRef(currentUser.uid), { recentRecipients: myRecentRecipients }).catch(err => {
+        console.error('Could not save recent recipient:', err);
+      });
+    }
+  }
 
   window.submitSendToUser = async function(){
     if(!currentUser || !sendToUserRecipeId) return;
@@ -3353,7 +3702,9 @@ setTimeout(function(){
         status.textContent = 'No such recipient exists.';
         return;
       }
-      const toUid = snap.docs[0].id;
+      const recipientDoc = snap.docs[0];
+      const toUid = recipientDoc.id;
+      const toName = (recipientDoc.data() || {}).displayName || '';
       if(toUid === currentUser.uid){
         status.textContent = "That's your own account — pick someone else.";
         return;
@@ -3386,6 +3737,7 @@ setTimeout(function(){
         sentAt: serverTimestamp()
       });
 
+      saveRecentRecipient(email, toName);
       status.textContent = 'Sent!';
       setTimeout(() => window.closeSendToUser(), 900);
     } catch(err){
@@ -3447,6 +3799,7 @@ setTimeout(function(){
             ${r.source ? `<div class="recipe-source">Adapted from ${r.sourceUrl ? `<a href="${r.sourceUrl}" target="_blank" rel="noopener">${r.source}</a>` : r.source}</div>` : ''}
             <div class="owner-actions">
               <button class="social-btn" onclick="window.copyMailItemToMine('${item.id}')">📋 Copy to My Recipes</button>
+              <button class="social-btn danger" onclick="window.blockUser('${item.fromUid}', '${(item.fromName||'').replace(/'/g,"\\'")}', '${(item.fromEmail||'').replace(/'/g,"\\'")}')">🚫 Block sender</button>
             </div>
           </div>
         </details>`;
@@ -3557,6 +3910,71 @@ setTimeout(function(){
       console.error('Dismiss failed:', err);
       alert("Couldn't remove that — please try again.");
     }
+  };
+
+  /* ---------- Block / unblock users ---------- */
+
+  window.blockUser = async function(uid, name, email){
+    if(!currentUser || !uid) return;
+    if(uid === currentUser.uid) return;
+    const label = name || email || 'this user';
+    if(!confirm(`Block ${label}? They will no longer be able to send you recipes.`)) return;
+    try{
+      await updateDoc(userDocRef(currentUser.uid), { blockedUserIds: arrayUnion(uid) });
+      if(!myBlockedUserIds.includes(uid)) myBlockedUserIds.push(uid);
+      alert(`${label} has been blocked.`);
+    } catch(err){
+      console.error('Block failed:', err);
+      alert("Couldn't block that user — please try again.");
+    }
+  };
+
+  window.unblockUser = async function(uid){
+    if(!currentUser || !uid) return;
+    try{
+      await updateDoc(userDocRef(currentUser.uid), { blockedUserIds: arrayRemove(uid) });
+      myBlockedUserIds = myBlockedUserIds.filter(id => id !== uid);
+      window.openBlockedUsers();
+    } catch(err){
+      console.error('Unblock failed:', err);
+      alert("Couldn't unblock that user — please try again.");
+    }
+  };
+
+  window.openBlockedUsers = async function(){
+    closeAccountMenu();
+    const body = document.getElementById('blockedUsersSheetBody');
+    body.innerHTML = `<p style="font-size:13px; color:var(--ink-soft);">Loading…</p>`;
+    document.getElementById('blockedUsersOverlay').classList.add('open');
+    if(!currentUser) return;
+    if(!myBlockedUserIds.length){
+      body.innerHTML = `<div class="empty-state"><div class="stamp">No blocked users</div><p>Users you block won't be able to send you recipes.</p></div>`;
+      return;
+    }
+    try{
+      const entries = await Promise.all(myBlockedUserIds.map(async uid => {
+        try{
+          const snap = await getDoc(doc(db, 'userDirectory', uid));
+          const data = snap.exists() ? snap.data() : {};
+          return { uid, name: data.displayName || '', email: data.email || '' };
+        } catch(e){
+          return { uid, name: '', email: '' };
+        }
+      }));
+      body.innerHTML = entries.map(e => `
+        <div class="blocked-user-row">
+          <span class="blocked-user-name">${e.name || e.email || 'Unknown user'}</span>
+          <button class="social-btn" onclick="window.unblockUser('${e.uid}')">Unblock</button>
+        </div>
+      `).join('');
+    } catch(err){
+      console.error('Loading blocked users failed:', err);
+      body.innerHTML = `<div class="empty-state"><div class="stamp">Couldn't load blocked users</div><p>Please try again.</p></div>`;
+    }
+  };
+
+  window.closeBlockedUsers = function(){
+    document.getElementById('blockedUsersOverlay').classList.remove('open');
   };
 
   /* ---------- Add Recipe (manual / photo / link) ---------- */
