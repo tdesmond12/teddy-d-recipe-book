@@ -575,6 +575,35 @@
   }
   .ingredient-chip button:hover{ color:var(--rust); }
   .ingredient-match-toggle{ margin-top:12px; margin-bottom:0; }
+  .surprise-me-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    width:100%;
+    margin-top:14px;
+    background:linear-gradient(135deg, var(--gold), var(--rust));
+    border:none;
+    border-radius:14px;
+    padding:12px 18px;
+    cursor:pointer;
+    box-shadow:0 8px 18px -8px rgba(183,49,44,0.55);
+    transition:transform 0.12s ease;
+  }
+  .surprise-me-btn:hover{ transform:translateY(-1px); }
+  .surprise-me-btn:active{ transform:translateY(0); }
+  .surprise-me-bat{
+    height:34px;
+    width:auto;
+    flex-shrink:0;
+    filter:drop-shadow(0 2px 2px rgba(0,0,0,0.25));
+  }
+  .surprise-me-btn span{
+    font-family:'Fraunces', serif;
+    font-size:17px;
+    font-weight:700;
+    color:var(--paper);
+  }
   .search-results{
     padding:6px 22px 20px;
     overflow-y:auto;
@@ -1620,7 +1649,7 @@
   // Version check: compares this page against version.txt (fetched fresh,
   // never cached) and force-reloads if they don't match, so updates reach
   // people without needing a manual cache clear.
-  var PAGE_BUILD_VERSION = "2026-09-19-30";
+  var PAGE_BUILD_VERSION = "2026-09-19-32";
   (function(){
     try{
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
@@ -1745,6 +1774,32 @@
       </div>
       <div id="sendToUserStatus" class="ai-status-text"></div>
       <button class="form-save-btn" onclick="window.submitSendToUser()">Send</button>
+    </div>
+  </div>
+</div>
+
+<div id="categoryAssignOverlay" class="cart-overlay" onclick="if(event.target===this) window.closeCategoryAssign()">
+  <div class="cart-sheet" style="max-width:380px;">
+    <div class="cart-sheet-head">
+      <h2>Choose a Category</h2>
+      <button class="cart-close" onclick="window.closeCategoryAssign()" aria-label="Close">&times;</button>
+    </div>
+    <div class="cart-sheet-body">
+      <div class="form-field">
+        <label>Category</label>
+        <select id="categoryAssignSelect" class="search-input"></select>
+      </div>
+      <div class="form-field">
+        <label>Also tag into your personal categories (optional)</label>
+        <div id="categoryAssignPersonalList"></div>
+        <div style="display:flex; gap:8px; align-items:flex-end; margin-top:10px;">
+          <div style="flex:1;">
+            <input type="text" id="categoryAssignNewName" placeholder="Create a new category..." autocomplete="off">
+          </div>
+          <button class="form-save-btn" style="width:auto; padding:11px 16px; margin:0;" onclick="window.addCategoryFromAssign()">Add</button>
+        </div>
+      </div>
+      <button class="form-save-btn" onclick="window.confirmCategoryAssign()">Confirm</button>
     </div>
   </div>
 </div>
@@ -1874,6 +1929,10 @@
         <button id="matchAnyBtn" class="search-toggle-btn active" onclick="setIngredientMatchMode('any')">Any ingredient</button>
         <button id="matchAllBtn" class="search-toggle-btn" onclick="setIngredientMatchMode('all')">All ingredients</button>
       </div>
+      <button id="surpriseMeBtn" class="surprise-me-btn" style="display:none;" onclick="window.surpriseMeRecipe && window.surpriseMeRecipe()">
+        <img class="surprise-me-bat" src="data:image/png;base64,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" alt="">
+        <span>Surprise Me!</span>
+      </button>
     </div>
     <div id="searchResults" class="search-results"></div>
   </div>
@@ -2498,6 +2557,7 @@ function categoryLabel(cat){
   };
   return map[cat] || cat;
 }
+window.categoryLabel = categoryLabel;
 
 /* ---------- Recipe visibility / view mode ---------- */
 
@@ -2904,7 +2964,10 @@ function removeIngredientChip(idx){
 
 function renderIngredientChips(){
   const row = document.getElementById('ingredientChipRow');
-  if(searchMode !== 'ingredient' || !searchIngredients.length){
+  const surpriseBtn = document.getElementById('surpriseMeBtn');
+  const hasChips = searchMode === 'ingredient' && searchIngredients.length > 0;
+  if(surpriseBtn) surpriseBtn.style.display = hasChips ? 'flex' : 'none';
+  if(!hasChips){
     row.style.display = 'none';
     row.innerHTML = '';
     return;
@@ -3654,6 +3717,91 @@ setTimeout(function(){
     window.toggleRecipeCategoryTag(cat.id);
   };
 
+  /* ---------- Category assignment (shown when copying a recipe) ---------- */
+
+  let categoryAssignCallback = null;
+  let categoryAssignPersonalSelected = new Set();
+
+  window.openCategoryAssign = function(defaultCategory, onConfirm){
+    categoryAssignCallback = onConfirm;
+    categoryAssignPersonalSelected = new Set();
+    const select = document.getElementById('categoryAssignSelect');
+    select.innerHTML = ALL_CATEGORIES.map(c =>
+      `<option value="${c}" ${c === defaultCategory ? 'selected' : ''}>${window.categoryLabel(c)}</option>`
+    ).join('');
+    document.getElementById('categoryAssignNewName').value = '';
+    renderCategoryAssignPersonalList();
+    document.getElementById('categoryAssignOverlay').classList.add('open');
+  };
+
+  window.closeCategoryAssign = function(){
+    document.getElementById('categoryAssignOverlay').classList.remove('open');
+    categoryAssignCallback = null;
+  };
+
+  function renderCategoryAssignPersonalList(){
+    const body = document.getElementById('categoryAssignPersonalList');
+    if(!myCustomCategories.length){
+      body.innerHTML = `<p style="font-size:13px; color:var(--ink-soft); margin:6px 0 0;">You don't have any personal categories yet — create one below.</p>`;
+      return;
+    }
+    body.innerHTML = `<div class="cat-picker-list">` + myCustomCategories.map(cat => {
+      const checked = categoryAssignPersonalSelected.has(cat.id);
+      return `<button type="button" class="cat-picker-row ${checked ? 'checked' : ''}" onclick="window.toggleCategoryAssignPersonal('${cat.id}')">
+        <span class="cat-picker-check">${checked ? '✓' : ''}</span>
+        <span>${cat.name}</span>
+      </button>`;
+    }).join('') + `</div>`;
+  }
+
+  window.toggleCategoryAssignPersonal = function(catId){
+    if(categoryAssignPersonalSelected.has(catId)) categoryAssignPersonalSelected.delete(catId);
+    else categoryAssignPersonalSelected.add(catId);
+    renderCategoryAssignPersonalList();
+  };
+
+  window.addCategoryFromAssign = async function(){
+    if(!currentUser){ window.signInGoogle(); return; }
+    const input = document.getElementById('categoryAssignNewName');
+    const name = (input.value || '').trim();
+    if(!name) return;
+    const cat = { id: 'cat_' + Date.now(), name };
+    myCustomCategories.push(cat);
+    categoryAssignPersonalSelected.add(cat.id);
+    input.value = '';
+    renderCategoryAssignPersonalList();
+    try{
+      await updateDoc(userDocRef(currentUser.uid), { customCategories: arrayUnion(cat) });
+    } catch(err){
+      console.error('Create category failed:', err);
+      alert("Couldn't create that category — please try again.");
+    }
+  };
+
+  window.confirmCategoryAssign = function(){
+    const select = document.getElementById('categoryAssignSelect');
+    const category = select.value;
+    const personalIds = Array.from(categoryAssignPersonalSelected);
+    const cb = categoryAssignCallback;
+    window.closeCategoryAssign();
+    if(cb) cb(category, personalIds);
+  };
+
+  async function applyPersonalCategoryTags(key, catIds){
+    if(!currentUser || !catIds || !catIds.length) return;
+    const updates = {};
+    catIds.forEach(catId => {
+      if(!myCustomCategoryTags[catId]) myCustomCategoryTags[catId] = {};
+      myCustomCategoryTags[catId][key] = true;
+      updates[`customCategoryTags.${catId}.${key}`] = true;
+    });
+    try{
+      await updateDoc(userDocRef(currentUser.uid), updates);
+    } catch(err){
+      console.error('Tagging failed:', err);
+    }
+  }
+
   /* ---------- Account dropdown, My Favorites, My History ---------- */
 
   window.toggleAccountMenu = function(){
@@ -4002,12 +4150,21 @@ setTimeout(function(){
   }
   window.refreshMailBadge = refreshMailBadge;
 
-  window.copyMailItemToMine = async function(mailId){
-    if(!currentUser) return;
+  window.copyMailItemToMine = function(mailId){
+    if(!currentUser){ window.signInGoogle(); return; }
     const item = (window._mailboxItems || []).find(m => m.id === mailId);
     if(!item) return;
     const r = item.recipe || {};
-    const category = (r.category && window.RECIPES_DATA[r.category]) ? r.category : 'american';
+    const defaultCategory = (r.category && window.RECIPES_DATA[r.category]) ? r.category : 'american';
+    window.openCategoryAssign(defaultCategory, (chosenCategory, personalIds) => {
+      performCopyMailItemToMine(mailId, chosenCategory, personalIds);
+    });
+  };
+
+  async function performCopyMailItemToMine(mailId, category, personalIds){
+    const item = (window._mailboxItems || []).find(m => m.id === mailId);
+    if(!item) return;
+    const r = item.recipe || {};
     try{
       const docRef = await addDoc(collection(db, "recipes"), {
         category,
@@ -4024,8 +4181,9 @@ setTimeout(function(){
         originalAddedByEmail: r.originalAddedByEmail || '',
         createdAt: serverTimestamp()
       });
+      const newKey = category + ':f' + docRef.id;
       window.RECIPES_DATA[category].push({
-        id: category + ':f' + docRef.id,
+        id: newKey,
         title: r.title, servings: r.servings || '', time: r.time || '',
         isMeal: !!r.isMeal, ingredients: (r.ingredients || []).slice(), steps: (r.steps || []).slice(),
         source: r.source || '', sourceUrl: r.sourceUrl || '',
@@ -4038,13 +4196,14 @@ setTimeout(function(){
         _originalAddedByName: r.originalAddedByName || '',
         _originalAddedByEmail: r.originalAddedByEmail || ''
       });
+      await applyPersonalCategoryTags(newKey, personalIds);
       alert(`"${r.title}" was copied to your recipes as private — edit it anytime from there.`);
       refreshActiveRecipeScreen();
     } catch(err){
       console.error('Copy from mailbox failed:', err);
       alert("Couldn't copy that recipe — please try again.");
     }
-  };
+  }
 
   window.dismissMailItem = async function(mailId){
     if(!currentUser) return;
@@ -4227,11 +4386,19 @@ setTimeout(function(){
             <input type="text" id="draftSourceUrl" value="${(p.sourceUrl || '').replace(/"/g, '&quot;')}" placeholder="https://...">
           </div>
         </div>`;
+    const categoryFieldHTML = editingRecipeId ? '' : `
+      <div class="form-field">
+        <label>Category</label>
+        <select id="draftCategory" class="search-input">
+          ${ALL_CATEGORIES.map(c => `<option value="${c}" ${c === addRecipeCategory ? 'selected' : ''}>${window.categoryLabel(c)}</option>`).join('')}
+        </select>
+      </div>`;
     return `
       <div class="form-field">
         <label>Title</label>
         <input type="text" id="draftTitle" value="${(p.title || '').replace(/"/g, '&quot;')}" placeholder="Recipe title">
       </div>
+      ${categoryFieldHTML}
       <div class="form-field-row">
         <div class="form-field">
           <label>Servings</label>
@@ -4369,6 +4536,48 @@ Attribution is important — always credit whoever created this recipe:
     }
   };
 
+  window.surpriseMeRecipe = async function(){
+    if(!currentUser){ window.signInGoogle(); return; }
+    if(!searchIngredients.length) return;
+    if(!AI_CONFIGURED || !aiModel){
+      alert("AI import isn't finished setting up yet — the Firebase project needs App Check configured first.");
+      return;
+    }
+    const ingredientsForPrompt = searchIngredients.slice();
+    const mode = ingredientMatchMode;
+    closeSearch();
+
+    addRecipeCategory = 'american';
+    addRecipeTab = 'manual';
+    editingRecipeId = null;
+    document.getElementById('addRecipeTitle').textContent = '🎲 Surprise Me! — Random Recipe';
+    setTabButtons('manual');
+    document.getElementById('addTabPhoto').style.display = 'none';
+    document.getElementById('addTabLink').style.display = 'none';
+    document.getElementById('addRecipeSheetBody').innerHTML =
+      `<div id="aiStatusText" class="ai-status-text">🎲 Dreaming up a recipe using ${mode === 'all' ? 'all of' : 'any of'}: ${ingredientsForPrompt.join(', ')}…</div>`;
+    document.getElementById('addRecipeOverlay').classList.add('open');
+
+    try{
+      const modeText = mode === 'all'
+        ? 'that uses ALL of the following ingredients'
+        : 'that uses ANY ONE OR MORE of the following ingredients';
+      const prompt = `Invent an original, realistic, appetizing home-cook recipe ${modeText}: ${ingredientsForPrompt.join(', ')}.
+Return ONLY valid JSON, no markdown formatting, no code fences, no commentary — exactly this shape:
+{"title": string, "servings": string, "time": string, "ingredients": string[], "steps": string[]}
+Ingredients and steps should read naturally, without numbering, and include real quantities/measurements. Make it a genuinely cookable, well-balanced recipe someone could follow tonight. It's fine to include a few common pantry staples alongside the listed ingredients if the recipe needs them.`;
+      const result = await aiModel.generateContent([prompt]);
+      const text = result.response.text();
+      const draft = parseAIRecipeJSON(text);
+      draft.source = 'Gemini AI (Surprise Me)';
+      document.getElementById('addRecipeSheetBody').innerHTML = manualFormHTML(draft);
+    } catch(err){
+      console.error('Surprise Me failed:', err);
+      document.getElementById('addRecipeSheetBody').innerHTML =
+        `<div class="ai-status-text">Couldn't come up with a recipe (${err.message || err.code || 'unknown error'}) — try again from the search button.</div>`;
+    }
+  };
+
   /* ---------- Profanity filter ---------- */
   const PROFANITY_LIST = [
     "anal","anus","arse","ass","asshole","bastard","bitch","bollocks","boner",
@@ -4446,9 +4655,11 @@ Attribution is important — always credit whoever created this recipe:
         if(source !== null) recipe.source = source;
         if(sourceUrl !== null) recipe.sourceUrl = sourceUrl;
       } else {
+        const categoryEl = document.getElementById('draftCategory');
+        const chosenCategory = categoryEl ? categoryEl.value : addRecipeCategory;
         const docRef = await addDoc(collection(db, "recipes"), {
-          category: addRecipeCategory,
-          categories: [addRecipeCategory],
+          category: chosenCategory,
+          categories: [chosenCategory],
           title, servings, time, isMeal, ingredients, steps, visibility, difficulty,
           source: source || '', sourceUrl: sourceUrl || '',
           addedBy: currentUser.uid,
@@ -4457,12 +4668,12 @@ Attribution is important — always credit whoever created this recipe:
           createdAt: serverTimestamp()
         });
 
-        window.RECIPES_DATA[addRecipeCategory].push({
-          id: addRecipeCategory + ':f' + docRef.id,
+        window.RECIPES_DATA[chosenCategory].push({
+          id: chosenCategory + ':f' + docRef.id,
           title, servings, time, isMeal, ingredients, steps, difficulty,
           source: source || '', sourceUrl: sourceUrl || '',
           visibility, ownerUid: currentUser.uid,
-          categories: [addRecipeCategory],
+          categories: [chosenCategory],
           _docId: docRef.id,
           _addedByName: currentUser.displayName || '',
           _addedByEmail: currentUser.email || ''
@@ -4555,9 +4766,17 @@ Attribution is important — always credit whoever created this recipe:
     }
   };
 
-  window.copyRecipeToMine = async function(id){
-    if(!currentUser) return;
+  window.copyRecipeToMine = function(id){
+    if(!currentUser){ window.signInGoogle(); return; }
     const { category, recipe } = recipeFromKey(id);
+    if(!recipe) return;
+    window.openCategoryAssign(category, (chosenCategory, personalIds) => {
+      performCopyRecipeToMine(id, chosenCategory, personalIds);
+    });
+  };
+
+  async function performCopyRecipeToMine(id, category, personalIds){
+    const { recipe } = recipeFromKey(id);
     if(!recipe) return;
     // Whoever first added this recipe to the app keeps credit, even through
     // multiple rounds of copying — carry forward the existing original credit
@@ -4579,8 +4798,9 @@ Attribution is important — always credit whoever created this recipe:
         originalAddedByName, originalAddedByEmail,
         createdAt: serverTimestamp()
       });
+      const newKey = category + ':f' + docRef.id;
       window.RECIPES_DATA[category].push({
-        id: category + ':f' + docRef.id,
+        id: newKey,
         title: recipe.title, servings: recipe.servings, time: recipe.time,
         isMeal: recipe.isMeal, ingredients: recipe.ingredients.slice(), steps: recipe.steps.slice(),
         source: recipe.source || '', sourceUrl: recipe.sourceUrl || '',
@@ -4593,13 +4813,14 @@ Attribution is important — always credit whoever created this recipe:
         _originalAddedByName: originalAddedByName,
         _originalAddedByEmail: originalAddedByEmail
       });
+      await applyPersonalCategoryTags(newKey, personalIds);
       refreshActiveRecipeScreen();
       alert(`"${recipe.title}" was copied to your recipes as private — edit it anytime from there.`);
     } catch(err){
       console.error('Copy failed:', err);
       alert("Couldn't copy that recipe — please try again.");
     }
-  };
+  }
 
   /* ---------- Update Category (change primary, or add to more) ---------- */
 
