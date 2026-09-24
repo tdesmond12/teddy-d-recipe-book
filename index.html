@@ -526,6 +526,12 @@
     outline:none;
     border-color:var(--forest);
   }
+  .readonly-field{
+    background:var(--paper) !important;
+    color:var(--ink-soft);
+    cursor:default;
+  }
+  .readonly-field:focus{ outline:none; border-color:var(--line) !important; }
   .search-input-row{
     display:flex;
     align-items:stretch;
@@ -575,6 +581,46 @@
   }
   .ingredient-chip button:hover{ color:var(--rust); }
   .ingredient-match-toggle{ margin-top:12px; margin-bottom:0; }
+  .ingredient-help-row{
+    display:flex;
+    justify-content:flex-end;
+    position:relative;
+    margin-bottom:8px;
+  }
+  .ingredient-help-btn{
+    width:24px;
+    height:24px;
+    flex-shrink:0;
+    border-radius:50%;
+    border:1.5px solid var(--forest);
+    background:var(--card);
+    color:var(--forest);
+    font-family:'Karla', sans-serif;
+    font-size:13px;
+    font-weight:800;
+    line-height:1;
+    cursor:pointer;
+  }
+  .ingredient-help-btn:hover{ background:var(--forest); color:var(--paper); }
+  .ingredient-help-tooltip{
+    display:none;
+    position:absolute;
+    top:30px;
+    right:0;
+    z-index:20;
+    width:260px;
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'Karla', sans-serif;
+    font-size:13px;
+    font-weight:500;
+    line-height:1.5;
+    padding:14px 16px;
+    border-radius:12px;
+    box-shadow:0 10px 24px -10px rgba(0,0,0,0.5);
+  }
+  .ingredient-help-btn:hover + .ingredient-help-tooltip,
+  .ingredient-help-tooltip.open{ display:block; }
   .surprise-me-btn{
     display:flex;
     align-items:center;
@@ -1649,7 +1695,7 @@
   // Version check: compares this page against version.txt (fetched fresh,
   // never cached) and force-reloads if they don't match, so updates reach
   // people without needing a manual cache clear.
-  var PAGE_BUILD_VERSION = "2026-09-19-32";
+  var PAGE_BUILD_VERSION = "2026-09-19-33";
   (function(){
     try{
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
@@ -1889,7 +1935,7 @@
       <button class="cart-close" onclick="window.closeAddRecipe()" aria-label="Close">&times;</button>
     </div>
     <div class="search-controls" style="padding-bottom:0;">
-      <div class="search-toggle">
+      <div class="search-toggle" id="addRecipeTabRow">
         <button id="addTabManual" class="search-toggle-btn active" onclick="window.setAddRecipeTab('manual')">Type it in</button>
         <button id="addTabPhoto" class="search-toggle-btn" onclick="window.setAddRecipeTab('photo')">From a Photo</button>
         <button id="addTabLink" class="search-toggle-btn" onclick="window.setAddRecipeTab('link')">From a Link</button>
@@ -1919,6 +1965,15 @@
       <div class="search-toggle">
         <button id="modeNameBtn" class="search-toggle-btn active" onclick="setSearchMode('name')">Recipe Name</button>
         <button id="modeIngredientBtn" class="search-toggle-btn" onclick="setSearchMode('ingredient')">Ingredient</button>
+      </div>
+      <div id="ingredientHelpRow" class="ingredient-help-row" style="display:none;">
+        <button id="ingredientHelpBtn" class="ingredient-help-btn" onclick="window.toggleIngredientHelp(event)" aria-label="How ingredient search works">?</button>
+        <div id="ingredientHelpTooltip" class="ingredient-help-tooltip">
+          Enter an ingredient you either have in your kitchen or want to find a recipe for here!<br><br>
+          Click the + to enter multiple ingredients<br><br>
+          Select "Any" or "All" to choose whether you want to search across any of your selected ingredients, or to require all be present<br><br>
+          Click the "Surprise Me!" button to have Home Plate create a custom random recipe for you using your selected ingredients!
+        </div>
       </div>
       <div id="ingredientChipRow" class="ingredient-chip-row" style="display:none;"></div>
       <div class="search-input-row">
@@ -2925,6 +2980,20 @@ function closeSearch(){
   document.getElementById('searchOverlay').classList.remove('open');
 }
 
+function toggleIngredientHelp(e){
+  if(e) e.stopPropagation();
+  document.getElementById('ingredientHelpTooltip').classList.toggle('open');
+}
+window.toggleIngredientHelp = toggleIngredientHelp;
+
+document.addEventListener('click', (e) => {
+  const row = document.getElementById('ingredientHelpRow');
+  if(row && !row.contains(e.target)){
+    const tip = document.getElementById('ingredientHelpTooltip');
+    if(tip) tip.classList.remove('open');
+  }
+});
+
 function setSearchMode(mode){
   searchMode = mode;
   document.getElementById('modeNameBtn').classList.toggle('active', mode === 'name');
@@ -2933,6 +3002,8 @@ function setSearchMode(mode){
   input.placeholder = mode === 'name' ? 'Start typing a recipe name...' : 'Type an ingredient, then tap +';
   document.getElementById('addIngredientBtn').style.display = mode === 'ingredient' ? 'flex' : 'none';
   document.getElementById('ingredientMatchToggle').style.display = mode === 'ingredient' ? 'flex' : 'none';
+  document.getElementById('ingredientHelpRow').style.display = mode === 'ingredient' ? 'flex' : 'none';
+  document.getElementById('ingredientHelpTooltip').classList.remove('open');
   renderIngredientChips();
   onSearchInput(input.value);
 }
@@ -2965,8 +3036,9 @@ function removeIngredientChip(idx){
 function renderIngredientChips(){
   const row = document.getElementById('ingredientChipRow');
   const surpriseBtn = document.getElementById('surpriseMeBtn');
-  const hasChips = searchMode === 'ingredient' && searchIngredients.length > 0;
-  if(surpriseBtn) surpriseBtn.style.display = hasChips ? 'flex' : 'none';
+  const inIngredientMode = searchMode === 'ingredient';
+  const hasChips = inIngredientMode && searchIngredients.length > 0;
+  if(surpriseBtn) surpriseBtn.style.display = inIngredientMode ? 'flex' : 'none';
   if(!hasChips){
     row.style.display = 'none';
     row.innerHTML = '';
@@ -4298,6 +4370,7 @@ setTimeout(function(){
     document.getElementById('addRecipeTitle').textContent =
       'Add a Recipe' + (window.categoryLabel ? ' — ' + window.categoryLabel(category) : '');
     setTabButtons('manual');
+    document.getElementById('addRecipeTabRow').style.display = '';
     document.getElementById('addTabPhoto').style.display = '';
     document.getElementById('addTabLink').style.display = '';
     renderAddRecipeBody();
@@ -4312,6 +4385,7 @@ setTimeout(function(){
     editingRecipeId = id;
     document.getElementById('addRecipeTitle').textContent = 'Edit Recipe';
     setTabButtons('manual');
+    document.getElementById('addRecipeTabRow').style.display = '';
     // Editing only makes sense for the form itself — hide the AI import tabs
     document.getElementById('addTabPhoto').style.display = 'none';
     document.getElementById('addTabLink').style.display = 'none';
@@ -4362,18 +4436,22 @@ setTimeout(function(){
     return `<div class="ai-not-configured">AI import isn't finished setting up yet — the Firebase project needs App Check configured first. In the meantime, use "Type it in" to add this recipe.</div>`;
   }
 
-  function manualFormHTML(prefill){
+  function manualFormHTML(prefill, opts){
     const p = prefill || {};
+    const locked = !!(opts && opts.locked);
     const ingredientsText = (p.ingredients || []).join('\n');
     const stepsText = (p.steps || []).join('\n');
+    const lockedAttr = locked ? 'readonly' : '';
+    const lockedClass = locked ? 'readonly-field' : '';
     // Once a source/credit has been set on an existing recipe, lock it —
     // it can still be ADDED the first time (fresh entry, AI review before
     // first save, or an edit where it was originally missed), but never
     // changed or removed afterward, to protect the original creator's credit.
-    const hasExistingSource = !!(editingRecipeId && (p.source || p.sourceUrl));
+    // A Surprise Me result is locked outright, since there's no real source to edit.
+    const hasExistingSource = locked || !!(editingRecipeId && (p.source || p.sourceUrl));
     const sourceFieldsHTML = hasExistingSource
       ? `<div class="form-field">
-          <label>Source / credit <span style="font-weight:400; color:var(--ink-soft); font-size:11.5px;">(locked — protects the original creator's credit)</span></label>
+          <label>Source / credit ${locked ? '' : '<span style="font-weight:400; color:var(--ink-soft); font-size:11.5px;">(locked — protects the original creator\'s credit)</span>'}</label>
           <p style="font-size:14px; margin:6px 0 0; padding:10px 12px; background:var(--paper); border-radius:8px; border:1px solid var(--line);">${p.source || ''}${p.source && p.sourceUrl ? ' — ' : ''}${p.sourceUrl ? `<a href="${p.sourceUrl}" target="_blank" rel="noopener">${p.sourceUrl}</a>` : ''}</p>
         </div>`
       : `<div class="form-field-row">
@@ -4394,28 +4472,29 @@ setTimeout(function(){
         </select>
       </div>`;
     return `
+      ${locked ? `<p style="font-size:13px; color:var(--ink-soft); margin:0 0 14px;">Here's what Home Plate came up with — you can still set the category, difficulty, and visibility below, but the recipe itself is the AI's surprise.</p>` : ''}
       <div class="form-field">
         <label>Title</label>
-        <input type="text" id="draftTitle" value="${(p.title || '').replace(/"/g, '&quot;')}" placeholder="Recipe title">
+        <input type="text" id="draftTitle" class="${lockedClass}" ${lockedAttr} value="${(p.title || '').replace(/"/g, '&quot;')}" placeholder="Recipe title">
       </div>
       ${categoryFieldHTML}
       <div class="form-field-row">
         <div class="form-field">
           <label>Servings</label>
-          <input type="text" id="draftServings" value="${(p.servings || '').replace(/"/g, '&quot;')}" placeholder="e.g. 4–6">
+          <input type="text" id="draftServings" class="${lockedClass}" ${lockedAttr} value="${(p.servings || '').replace(/"/g, '&quot;')}" placeholder="e.g. 4–6">
         </div>
         <div class="form-field">
           <label>Time</label>
-          <input type="text" id="draftTime" value="${(p.time || '').replace(/"/g, '&quot;')}" placeholder="e.g. 1 hour">
+          <input type="text" id="draftTime" class="${lockedClass}" ${lockedAttr} value="${(p.time || '').replace(/"/g, '&quot;')}" placeholder="e.g. 1 hour">
         </div>
       </div>
       <div class="form-field">
         <label>Ingredients (one per line)</label>
-        <textarea id="draftIngredients" rows="6">${ingredientsText}</textarea>
+        <textarea id="draftIngredients" class="${lockedClass}" ${lockedAttr} rows="6">${ingredientsText}</textarea>
       </div>
       <div class="form-field">
         <label>Steps (one per line)</label>
-        <textarea id="draftSteps" rows="6">${stepsText}</textarea>
+        <textarea id="draftSteps" class="${lockedClass}" ${lockedAttr} rows="6">${stepsText}</textarea>
       </div>
       ${sourceFieldsHTML}
       <div class="form-field">
@@ -4538,7 +4617,6 @@ Attribution is important — always credit whoever created this recipe:
 
   window.surpriseMeRecipe = async function(){
     if(!currentUser){ window.signInGoogle(); return; }
-    if(!searchIngredients.length) return;
     if(!AI_CONFIGURED || !aiModel){
       alert("AI import isn't finished setting up yet — the Firebase project needs App Check configured first.");
       return;
@@ -4551,26 +4629,35 @@ Attribution is important — always credit whoever created this recipe:
     addRecipeTab = 'manual';
     editingRecipeId = null;
     document.getElementById('addRecipeTitle').textContent = '🎲 Surprise Me! — Random Recipe';
-    setTabButtons('manual');
-    document.getElementById('addTabPhoto').style.display = 'none';
-    document.getElementById('addTabLink').style.display = 'none';
+    document.getElementById('addRecipeTabRow').style.display = 'none';
+    const loadingText = ingredientsForPrompt.length
+      ? `🎲 Dreaming up a recipe using ${mode === 'all' ? 'all of' : 'any of'}: ${ingredientsForPrompt.join(', ')}…`
+      : `🎲 Dreaming up a surprise recipe…`;
     document.getElementById('addRecipeSheetBody').innerHTML =
-      `<div id="aiStatusText" class="ai-status-text">🎲 Dreaming up a recipe using ${mode === 'all' ? 'all of' : 'any of'}: ${ingredientsForPrompt.join(', ')}…</div>`;
+      `<div id="aiStatusText" class="ai-status-text">${loadingText}</div>`;
     document.getElementById('addRecipeOverlay').classList.add('open');
 
     try{
-      const modeText = mode === 'all'
-        ? 'that uses ALL of the following ingredients'
-        : 'that uses ANY ONE OR MORE of the following ingredients';
-      const prompt = `Invent an original, realistic, appetizing home-cook recipe ${modeText}: ${ingredientsForPrompt.join(', ')}.
+      let prompt;
+      if(ingredientsForPrompt.length){
+        const modeText = mode === 'all'
+          ? 'that uses ALL of the following ingredients'
+          : 'that uses ANY ONE OR MORE of the following ingredients';
+        prompt = `Invent an original, realistic, appetizing home-cook recipe ${modeText}: ${ingredientsForPrompt.join(', ')}.
 Return ONLY valid JSON, no markdown formatting, no code fences, no commentary — exactly this shape:
 {"title": string, "servings": string, "time": string, "ingredients": string[], "steps": string[]}
 Ingredients and steps should read naturally, without numbering, and include real quantities/measurements. Make it a genuinely cookable, well-balanced recipe someone could follow tonight. It's fine to include a few common pantry staples alongside the listed ingredients if the recipe needs them.`;
+      } else {
+        prompt = `Invent an original, realistic, appetizing home-cook recipe — surprise me with something delicious and a little unexpected.
+Return ONLY valid JSON, no markdown formatting, no code fences, no commentary — exactly this shape:
+{"title": string, "servings": string, "time": string, "ingredients": string[], "steps": string[]}
+Ingredients and steps should read naturally, without numbering, and include real quantities/measurements. Make it a genuinely cookable, well-balanced recipe someone could follow tonight.`;
+      }
       const result = await aiModel.generateContent([prompt]);
       const text = result.response.text();
       const draft = parseAIRecipeJSON(text);
       draft.source = 'Gemini AI (Surprise Me)';
-      document.getElementById('addRecipeSheetBody').innerHTML = manualFormHTML(draft);
+      document.getElementById('addRecipeSheetBody').innerHTML = manualFormHTML(draft, { locked: true });
     } catch(err){
       console.error('Surprise Me failed:', err);
       document.getElementById('addRecipeSheetBody').innerHTML =
