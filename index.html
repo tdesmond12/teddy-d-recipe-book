@@ -139,6 +139,21 @@
     flex-direction:column;
     gap:12px;
   }
+  .create-category-btn{
+    display:block;
+    width:100%;
+    margin-top:14px;
+    background:none;
+    border:1.5px dashed var(--line);
+    border-radius:14px;
+    padding:14px;
+    font-family:'Karla', sans-serif;
+    font-size:14.5px;
+    font-weight:700;
+    color:var(--forest);
+    cursor:pointer;
+  }
+  .create-category-btn:hover{ border-color:var(--forest); background:var(--card); }
   .tabcard{
     display:flex;
     align-items:center;
@@ -511,6 +526,55 @@
     outline:none;
     border-color:var(--forest);
   }
+  .search-input-row{
+    display:flex;
+    align-items:stretch;
+    gap:8px;
+  }
+  .search-input-row .search-input{ flex:1; }
+  .add-ingredient-btn{
+    flex-shrink:0;
+    width:44px;
+    border-radius:8px;
+    border:1px solid var(--forest);
+    background:var(--forest);
+    color:var(--paper);
+    font-size:22px;
+    font-weight:600;
+    line-height:1;
+    cursor:pointer;
+  }
+  .add-ingredient-btn:hover{ background:var(--forest-deep); }
+  .ingredient-chip-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:7px;
+    margin-bottom:10px;
+  }
+  .ingredient-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:100px;
+    padding:6px 8px 6px 13px;
+    font-family:'Karla', sans-serif;
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .ingredient-chip button{
+    background:none;
+    border:none;
+    font-size:16px;
+    line-height:1;
+    color:var(--ink-soft);
+    cursor:pointer;
+    padding:2px 4px;
+  }
+  .ingredient-chip button:hover{ color:var(--rust); }
+  .ingredient-match-toggle{ margin-top:12px; margin-bottom:0; }
   .search-results{
     padding:6px 22px 20px;
     overflow-y:auto;
@@ -1556,7 +1620,7 @@
   // Version check: compares this page against version.txt (fetched fresh,
   // never cached) and force-reloads if they don't match, so updates reach
   // people without needing a manual cache clear.
-  var PAGE_BUILD_VERSION = "2026-09-19-28";
+  var PAGE_BUILD_VERSION = "2026-09-19-30";
   (function(){
     try{
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
@@ -1801,7 +1865,15 @@
         <button id="modeNameBtn" class="search-toggle-btn active" onclick="setSearchMode('name')">Recipe Name</button>
         <button id="modeIngredientBtn" class="search-toggle-btn" onclick="setSearchMode('ingredient')">Ingredient</button>
       </div>
-      <input id="searchInput" class="search-input" type="text" placeholder="Start typing..." oninput="onSearchInput(this.value)" autocomplete="off">
+      <div id="ingredientChipRow" class="ingredient-chip-row" style="display:none;"></div>
+      <div class="search-input-row">
+        <input id="searchInput" class="search-input" type="text" placeholder="Start typing..." oninput="onSearchInput(this.value)" onkeydown="handleSearchInputKeydown(event)" autocomplete="off">
+        <button id="addIngredientBtn" class="add-ingredient-btn" onclick="addIngredientChip()" style="display:none;" aria-label="Add ingredient">+</button>
+      </div>
+      <div id="ingredientMatchToggle" class="search-toggle ingredient-match-toggle" style="display:none;">
+        <button id="matchAnyBtn" class="search-toggle-btn active" onclick="setIngredientMatchMode('any')">Any ingredient</button>
+        <button id="matchAllBtn" class="search-toggle-btn" onclick="setIngredientMatchMode('all')">All ingredients</button>
+      </div>
     </div>
     <div id="searchResults" class="search-results"></div>
   </div>
@@ -1982,6 +2054,7 @@
         <span class="arrow">&rsaquo;</span>
       </button>
     </div>
+    <button class="create-category-btn" onclick="window.openMyCategories && window.openMyCategories()">＋ Create a Category</button>
   </div>
 
   <!-- SCREEN 3: GOOD & BAD (rendered by JS) -->
@@ -2770,10 +2843,19 @@ document.addEventListener('click', function(e){
 /* ============ SEARCH ============ */
 
 let searchMode = 'name';
+let searchIngredients = [];       // committed ingredient chips, ingredient mode only
+let ingredientMatchMode = 'any';  // 'any' | 'all'
 
 function openSearch(){
   document.getElementById('searchOverlay').classList.add('open');
   document.getElementById('searchResults').innerHTML = '';
+  searchIngredients = [];
+  ingredientMatchMode = 'any';
+  renderIngredientChips();
+  const anyBtn = document.getElementById('matchAnyBtn');
+  const allBtn = document.getElementById('matchAllBtn');
+  if(anyBtn) anyBtn.classList.add('active');
+  if(allBtn) allBtn.classList.remove('active');
   const input = document.getElementById('searchInput');
   input.value = '';
   setTimeout(() => input.focus(), 50);
@@ -2788,22 +2870,84 @@ function setSearchMode(mode){
   document.getElementById('modeNameBtn').classList.toggle('active', mode === 'name');
   document.getElementById('modeIngredientBtn').classList.toggle('active', mode === 'ingredient');
   const input = document.getElementById('searchInput');
-  input.placeholder = mode === 'name' ? 'Start typing a recipe name...' : 'Start typing an ingredient...';
+  input.placeholder = mode === 'name' ? 'Start typing a recipe name...' : 'Type an ingredient, then tap +';
+  document.getElementById('addIngredientBtn').style.display = mode === 'ingredient' ? 'flex' : 'none';
+  document.getElementById('ingredientMatchToggle').style.display = mode === 'ingredient' ? 'flex' : 'none';
+  renderIngredientChips();
   onSearchInput(input.value);
+}
+
+function handleSearchInputKeydown(e){
+  if(e.key === 'Enter' && searchMode === 'ingredient'){
+    e.preventDefault();
+    addIngredientChip();
+  }
+}
+
+function addIngredientChip(){
+  const input = document.getElementById('searchInput');
+  const val = input.value.trim();
+  if(!val) return;
+  if(!searchIngredients.some(i => i.toLowerCase() === val.toLowerCase())){
+    searchIngredients.push(val);
+  }
+  input.value = '';
+  renderIngredientChips();
+  onSearchInput('');
+}
+
+function removeIngredientChip(idx){
+  searchIngredients.splice(idx, 1);
+  renderIngredientChips();
+  onSearchInput(document.getElementById('searchInput').value);
+}
+
+function renderIngredientChips(){
+  const row = document.getElementById('ingredientChipRow');
+  if(searchMode !== 'ingredient' || !searchIngredients.length){
+    row.style.display = 'none';
+    row.innerHTML = '';
+    return;
+  }
+  row.style.display = 'flex';
+  row.innerHTML = searchIngredients.map((ing, idx) => `
+    <span class="ingredient-chip">${ing}<button onclick="removeIngredientChip(${idx})" aria-label="Remove ${ing}">&times;</button></span>
+  `).join('');
+}
+
+function setIngredientMatchMode(mode){
+  ingredientMatchMode = mode;
+  document.getElementById('matchAnyBtn').classList.toggle('active', mode === 'any');
+  document.getElementById('matchAllBtn').classList.toggle('active', mode === 'all');
+  onSearchInput(document.getElementById('searchInput').value);
 }
 
 function onSearchInput(rawValue){
   const query = rawValue.trim().toLowerCase();
-  const resultsEl = document.getElementById('searchResults');
+  const flat = getAllRecipesFlat();
 
-  if(query === ''){
-    resultsEl.innerHTML = '';
+  // Chip-based multi-ingredient search takes over once at least one chip is committed
+  if(searchMode === 'ingredient' && searchIngredients.length > 0){
+    const needles = searchIngredients.map(i => i.toLowerCase());
+    let matches = [];
+    flat.forEach(({ key, category, recipe }) => {
+      const ingLower = recipe.ingredients.map(i => i.toLowerCase());
+      const hitNeedles = needles.filter(n => ingLower.some(ing => ing.includes(n)));
+      const isMatch = ingredientMatchMode === 'all' ? hitNeedles.length === needles.length : hitNeedles.length > 0;
+      if(isMatch){
+        matches.push({ key, category, recipe, matchedIngredient: hitNeedles.join(', ') });
+      }
+    });
+    renderSearchResults(matches);
     return;
   }
 
-  const flat = getAllRecipesFlat();
-  let matches = [];
+  if(query === ''){
+    document.getElementById('searchResults').innerHTML = '';
+    return;
+  }
 
+  let matches = [];
   if(searchMode === 'name'){
     matches = flat
       .filter(({ recipe }) => recipe.title.toLowerCase().includes(query))
@@ -2816,12 +2960,15 @@ function onSearchInput(rawValue){
       }
     });
   }
+  renderSearchResults(matches);
+}
 
+function renderSearchResults(matches){
+  const resultsEl = document.getElementById('searchResults');
   if(matches.length === 0){
     resultsEl.innerHTML = `<div class="search-empty">No matches yet — keep typing, or try the other search mode.</div>`;
     return;
   }
-
   resultsEl.innerHTML = matches.map(({ key, category, recipe, matchedIngredient }) => `
     <button class="search-result-row" onclick="goToSearchResult('${key}')">
       <span class="sr-title">${recipe.title}</span>
@@ -3348,6 +3495,7 @@ setTimeout(function(){
     document.getElementById('newCategoryName').value = '';
     renderMyCategoriesList();
     document.getElementById('myCategoriesOverlay').classList.add('open');
+    setTimeout(() => document.getElementById('newCategoryName').focus(), 50);
   };
   window.closeMyCategories = function(){
     document.getElementById('myCategoriesOverlay').classList.remove('open');
