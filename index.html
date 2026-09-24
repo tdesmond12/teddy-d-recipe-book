@@ -898,6 +898,21 @@
   }
   .recipient-chip:hover{ border-color:var(--forest); color:var(--forest); }
 
+  .draft-personal-cat-row{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    padding:9px 2px;
+    font-family:'Karla', sans-serif;
+    font-size:14px;
+    font-weight:600;
+    color:var(--ink);
+    cursor:pointer;
+    border-bottom:1px solid var(--line);
+  }
+  .draft-personal-cat-row:last-child{ border-bottom:none; }
+  .draft-personal-cat-row input{ flex-shrink:0; width:17px; height:17px; accent-color:var(--forest); }
+
   .blocked-user-row{
     display:flex;
     align-items:center;
@@ -1695,7 +1710,7 @@
   // Version check: compares this page against version.txt (fetched fresh,
   // never cached) and force-reloads if they don't match, so updates reach
   // people without needing a manual cache clear.
-  var PAGE_BUILD_VERSION = "2026-09-19-33";
+  var PAGE_BUILD_VERSION = "2026-09-19-34";
   (function(){
     try{
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
@@ -3859,18 +3874,30 @@ setTimeout(function(){
     if(cb) cb(category, personalIds);
   };
 
-  async function applyPersonalCategoryTags(key, catIds){
-    if(!currentUser || !catIds || !catIds.length) return;
+  async function syncPersonalCategoryTags(key, selectedIds){
+    if(!currentUser) return;
+    const selected = new Set(selectedIds || []);
     const updates = {};
-    catIds.forEach(catId => {
-      if(!myCustomCategoryTags[catId]) myCustomCategoryTags[catId] = {};
-      myCustomCategoryTags[catId][key] = true;
-      updates[`customCategoryTags.${catId}.${key}`] = true;
+    let changed = false;
+    myCustomCategories.forEach(cat => {
+      const currentlyTagged = !!(myCustomCategoryTags[cat.id] && myCustomCategoryTags[cat.id][key]);
+      const shouldBeTagged = selected.has(cat.id);
+      if(currentlyTagged === shouldBeTagged) return;
+      changed = true;
+      if(!myCustomCategoryTags[cat.id]) myCustomCategoryTags[cat.id] = {};
+      if(shouldBeTagged){
+        myCustomCategoryTags[cat.id][key] = true;
+        updates[`customCategoryTags.${cat.id}.${key}`] = true;
+      } else {
+        delete myCustomCategoryTags[cat.id][key];
+        updates[`customCategoryTags.${cat.id}.${key}`] = deleteField();
+      }
     });
+    if(!changed) return;
     try{
       await updateDoc(userDocRef(currentUser.uid), updates);
     } catch(err){
-      console.error('Tagging failed:', err);
+      console.error('Category tag sync failed:', err);
     }
   }
 
@@ -4268,7 +4295,7 @@ setTimeout(function(){
         _originalAddedByName: r.originalAddedByName || '',
         _originalAddedByEmail: r.originalAddedByEmail || ''
       });
-      await applyPersonalCategoryTags(newKey, personalIds);
+      await syncPersonalCategoryTags(newKey, personalIds);
       alert(`"${r.title}" was copied to your recipes as private — edit it anytime from there.`);
       refreshActiveRecipeScreen();
     } catch(err){
@@ -4471,6 +4498,30 @@ setTimeout(function(){
           ${ALL_CATEGORIES.map(c => `<option value="${c}" ${c === addRecipeCategory ? 'selected' : ''}>${window.categoryLabel(c)}</option>`).join('')}
         </select>
       </div>`;
+    const personalCatChecked = new Set();
+    if(editingRecipeId){
+      myCustomCategories.forEach(cat => {
+        if(myCustomCategoryTags[cat.id] && myCustomCategoryTags[cat.id][editingRecipeId]) personalCatChecked.add(cat.id);
+      });
+    }
+    const personalCategoryHTML = `
+      <div class="form-field">
+        <label>Personal categories (optional)</label>
+        <div id="draftPersonalCatList">
+          ${myCustomCategories.length ? myCustomCategories.map(cat => `
+            <label class="draft-personal-cat-row">
+              <input type="checkbox" name="draftPersonalCat" value="${cat.id}" ${personalCatChecked.has(cat.id) ? 'checked' : ''}>
+              <span>${cat.name}</span>
+            </label>
+          `).join('') : `<p style="font-size:13px; color:var(--ink-soft); margin:4px 0 0;">You don't have any personal categories yet.</p>`}
+        </div>
+        <div style="display:flex; gap:8px; align-items:flex-end; margin-top:10px;">
+          <div style="flex:1;">
+            <input type="text" id="draftNewPersonalCat" placeholder="Create a new category..." autocomplete="off">
+          </div>
+          <button type="button" class="form-save-btn" style="width:auto; padding:11px 16px; margin:0;" onclick="window.addCategoryFromDraftForm()">Add</button>
+        </div>
+      </div>`;
     return `
       ${locked ? `<p style="font-size:13px; color:var(--ink-soft); margin:0 0 14px;">Here's what Home Plate came up with — you can still set the category, difficulty, and visibility below, but the recipe itself is the AI's surprise.</p>` : ''}
       <div class="form-field">
@@ -4514,9 +4565,33 @@ setTimeout(function(){
         </div>
         <input type="hidden" id="draftVisibility" value="${p.visibility === 'private' ? 'private' : 'public'}">
       </div>
+      ${personalCategoryHTML}
       <button class="form-save-btn" onclick="window.submitAddRecipe()">${editingRecipeId ? 'Save Changes' : 'Save Recipe'}</button>
     `;
   }
+
+  window.addCategoryFromDraftForm = async function(){
+    if(!currentUser){ window.signInGoogle(); return; }
+    const input = document.getElementById('draftNewPersonalCat');
+    const name = (input.value || '').trim();
+    if(!name) return;
+    const cat = { id: 'cat_' + Date.now(), name };
+    myCustomCategories.push(cat);
+    input.value = '';
+    const list = document.getElementById('draftPersonalCatList');
+    const emptyMsg = list.querySelector('p');
+    if(emptyMsg) emptyMsg.remove();
+    const label = document.createElement('label');
+    label.className = 'draft-personal-cat-row';
+    label.innerHTML = `<input type="checkbox" name="draftPersonalCat" value="${cat.id}" checked><span>${cat.name}</span>`;
+    list.appendChild(label);
+    try{
+      await updateDoc(userDocRef(currentUser.uid), { customCategories: arrayUnion(cat) });
+    } catch(err){
+      console.error('Create category failed:', err);
+      alert("Couldn't create that category — please try again.");
+    }
+  };
 
   function difficultyDotsPickerHTML(value){
     let html = '';
@@ -4711,6 +4786,7 @@ Ingredients and steps should read naturally, without numbering, and include real
     const difficulty = parseInt(document.getElementById('draftDifficulty').value, 10) || 0;
     const visEl = document.getElementById('draftVisibility');
     const visibility = visEl && visEl.value === 'private' ? 'private' : 'public';
+    const selectedPersonalCats = Array.from(document.querySelectorAll('input[name="draftPersonalCat"]:checked')).map(el => el.value);
 
     const flaggedField = findProfaneField({
       'Title': title,
@@ -4741,6 +4817,7 @@ Ingredients and steps should read naturally, without numbering, and include real
         recipe.visibility = visibility; recipe.difficulty = difficulty;
         if(source !== null) recipe.source = source;
         if(sourceUrl !== null) recipe.sourceUrl = sourceUrl;
+        await syncPersonalCategoryTags(editingRecipeId, selectedPersonalCats);
       } else {
         const categoryEl = document.getElementById('draftCategory');
         const chosenCategory = categoryEl ? categoryEl.value : addRecipeCategory;
@@ -4755,8 +4832,9 @@ Ingredients and steps should read naturally, without numbering, and include real
           createdAt: serverTimestamp()
         });
 
+        const newKey = chosenCategory + ':f' + docRef.id;
         window.RECIPES_DATA[chosenCategory].push({
-          id: chosenCategory + ':f' + docRef.id,
+          id: newKey,
           title, servings, time, isMeal, ingredients, steps, difficulty,
           source: source || '', sourceUrl: sourceUrl || '',
           visibility, ownerUid: currentUser.uid,
@@ -4765,6 +4843,7 @@ Ingredients and steps should read naturally, without numbering, and include real
           _addedByName: currentUser.displayName || '',
           _addedByEmail: currentUser.email || ''
         });
+        await syncPersonalCategoryTags(newKey, selectedPersonalCats);
       }
 
       window.closeAddRecipe();
@@ -4900,7 +4979,7 @@ Ingredients and steps should read naturally, without numbering, and include real
         _originalAddedByName: originalAddedByName,
         _originalAddedByEmail: originalAddedByEmail
       });
-      await applyPersonalCategoryTags(newKey, personalIds);
+      await syncPersonalCategoryTags(newKey, personalIds);
       refreshActiveRecipeScreen();
       alert(`"${recipe.title}" was copied to your recipes as private — edit it anytime from there.`);
     } catch(err){
