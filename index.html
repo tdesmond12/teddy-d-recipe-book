@@ -808,6 +808,27 @@
   }
   .fav-group-title:first-child{ margin-top:2px; }
   .cat-group-actions{ display:flex; gap:4px; flex-shrink:0; }
+  .my-category-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:14px 4px;
+    border-bottom:1px solid var(--line);
+  }
+  .my-category-row:last-child{ border-bottom:none; }
+  .my-category-name{
+    background:none;
+    border:none;
+    text-align:left;
+    font-family:'Fraunces', serif;
+    font-size:16px;
+    font-weight:600;
+    color:var(--forest-deep);
+    cursor:pointer;
+    padding:0;
+  }
+  .my-category-name:hover{ text-decoration:underline; }
   .cat-mini-btn{
     background:none;
     border:none;
@@ -1710,7 +1731,7 @@
   // Version check: compares this page against version.txt (fetched fresh,
   // never cached) and force-reloads if they don't match, so updates reach
   // people without needing a manual cache clear.
-  var PAGE_BUILD_VERSION = "2026-09-19-36";
+  var PAGE_BUILD_VERSION = "2026-09-19-37";
   (function(){
     try{
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
@@ -2388,11 +2409,29 @@ Object.keys(RECIPES_DATA).forEach(cat => {
 });
 
 function renderRecipeList(category, containerId){
-  const container = document.getElementById(containerId);
   const fullList = RECIPES_DATA[category] || [];
   const list = fullList.filter(isRecipeVisible);
+  renderRecipeCardsInto(containerId, list, category, fullList.length === 0);
+}
 
-  if(fullList.length === 0){
+// Personal-category screens pull their list from tag membership instead of
+// RECIPES_DATA, then reuse the exact same full recipe-card renderer.
+function renderMyCategoryRecipeList(catId, containerId){
+  const tags = (window.myCustomCategoryTags && window.myCustomCategoryTags[catId]) || {};
+  const keys = Object.keys(tags).filter(k => tags[k]);
+  const fullList = keys.map(k => {
+    const found = findRecipeById(k);
+    return found ? found.recipe : null;
+  }).filter(Boolean);
+  const list = fullList.filter(isRecipeVisible);
+  renderRecipeCardsInto(containerId, list, 'mycat-' + catId, false, true);
+}
+
+function renderRecipeCardsInto(containerId, list, namespace, isCategoryEmpty, isPersonal){
+  const container = document.getElementById(containerId);
+  if(!container) return;
+
+  if(isCategoryEmpty){
     container.innerHTML = `<div class="empty-state">
       <div class="stamp">Recipes coming soon</div>
       <p>This shelf is empty for now — check back as the book grows.</p>
@@ -2400,10 +2439,15 @@ function renderRecipeList(category, containerId){
     return;
   }
   if(list.length === 0){
-    container.innerHTML = `<div class="empty-state">
-      <div class="stamp">Nothing to show in this view</div>
-      <p>Try a different view from your account menu, or add a recipe here.</p>
-    </div>`;
+    container.innerHTML = isPersonal
+      ? `<div class="empty-state">
+          <div class="stamp">Nothing tagged yet</div>
+          <p>Tag recipes into this category from any recipe's 🗂 Categories button.</p>
+        </div>`
+      : `<div class="empty-state">
+          <div class="stamp">Nothing to show in this view</div>
+          <p>Try a different view from your account menu, or add a recipe here.</p>
+        </div>`;
     return;
   }
 
@@ -2419,11 +2463,11 @@ function renderRecipeList(category, containerId){
     if(r.servings) metaBits.push(`Serves ${r.servings}`);
     if(r.time) metaBits.push(r.time);
     const openAttr = list.length === 1 ? ' open' : '';
-    // Prefix ids with the CURRENT page's category (not just the recipe's own
-    // id) so the same recipe can safely render on more than one category page.
+    // Prefix ids with the CURRENT page's namespace (not just the recipe's own
+    // id) so the same recipe can safely render on more than one page.
     const idSuffix = r.id.replace(/:/g, '-');
-    const domId = 'recipe-' + category + '-' + idSuffix;
-    const socialDomId = 'social-' + category + '-' + idSuffix;
+    const domId = 'recipe-' + namespace + '-' + idSuffix;
+    const socialDomId = 'social-' + namespace + '-' + idSuffix;
     const isOwner = !!(uid && r.ownerUid === uid);
     const isOthersCommunityRecipe = !!(r.ownerUid && !isOwner);
     const visBadge = r.ownerUid
@@ -2478,6 +2522,7 @@ function renderRecipeList(category, containerId){
   container.innerHTML = html;
   if(window.refreshSocialUI) window.refreshSocialUI();
 }
+window.renderMyCategoryRecipeList = renderMyCategoryRecipeList;
 
 function renderGoodBad(){
   const container = document.getElementById('goodbad-content');
@@ -3191,6 +3236,62 @@ const RECIPE_SCREEN_MAP = {
 };
 window.RECIPE_SCREEN_MAP = RECIPE_SCREEN_MAP;
 
+// route -> personal category id, for the dynamically-created screens below.
+const MY_CATEGORY_ROUTE_MAP = {};
+window.MY_CATEGORY_ROUTE_MAP = MY_CATEGORY_ROUTE_MAP;
+
+function registerCustomCategoryScreen(cat){
+  const route = 'mycat-' + cat.id;
+  MY_CATEGORY_ROUTE_MAP[route] = cat.id;
+  ROUTES[route] = { label: cat.name, parent: 'recipes' };
+
+  if(!document.getElementById('screen-' + route)){
+    const wrap = document.querySelector('.wrap');
+    const screenEl = document.createElement('div');
+    screenEl.className = 'screen';
+    screenEl.id = 'screen-' + route;
+    screenEl.innerHTML = `<div id="${route}-content"></div>`;
+    wrap.appendChild(screenEl);
+  }
+
+  const tabgrid = document.querySelector('#screen-recipes .tabgrid');
+  let tile = document.getElementById('tile-' + route);
+  if(!tile && tabgrid){
+    tile = document.createElement('button');
+    tile.className = 'tabcard';
+    tile.id = 'tile-' + route;
+    tile.onclick = () => goTo(route);
+    tile.innerHTML = `<span>
+        <span class="title" data-cat-name>${cat.name}</span>
+        <span class="desc">Your personal category</span>
+      </span>
+      <span class="arrow">&rsaquo;</span>`;
+    tabgrid.appendChild(tile);
+  } else if(tile){
+    const titleEl = tile.querySelector('[data-cat-name]');
+    if(titleEl) titleEl.textContent = cat.name;
+  }
+}
+
+function unregisterCustomCategoryScreen(catId){
+  const route = 'mycat-' + catId;
+  delete MY_CATEGORY_ROUTE_MAP[route];
+  delete ROUTES[route];
+  const screenEl = document.getElementById('screen-' + route);
+  if(screenEl) screenEl.remove();
+  const tile = document.getElementById('tile-' + route);
+  if(tile) tile.remove();
+  // If this category's screen happened to be the active one (e.g. deleted
+  // from within its own screen), fall back to the Recipes menu.
+  if(currentRoute === route) goTo('recipes');
+}
+
+window.syncCustomCategoryScreens = function(){
+  (window.myCustomCategories || []).forEach(registerCustomCategoryScreen);
+};
+window.registerCustomCategoryScreen = registerCustomCategoryScreen;
+window.unregisterCustomCategoryScreen = unregisterCustomCategoryScreen;
+
 function goTo(route, fromHistory){
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + route).classList.add('active');
@@ -3204,6 +3305,9 @@ function goTo(route, fromHistory){
   if(RECIPE_SCREEN_MAP[route]){
     renderRecipeList(RECIPE_SCREEN_MAP[route], route + '-content');
   }
+  if(MY_CATEGORY_ROUTE_MAP[route]){
+    renderMyCategoryRecipeList(MY_CATEGORY_ROUTE_MAP[route], route + '-content');
+  }
   if(route === 'shopping'){
     renderShoppingScreen();
   }
@@ -3212,6 +3316,7 @@ function goTo(route, fromHistory){
   }
   window.scrollTo({ top: 0, behavior: 'auto' });
 }
+window.goTo = goTo;
 
 window.addEventListener('popstate', function(e){
   const route = (e.state && e.state.route) || 'home';
@@ -3412,6 +3517,9 @@ setTimeout(function(){
         ratings: {}
       }, { merge: true });
     }
+    window.myCustomCategories = myCustomCategories;
+    window.myCustomCategoryTags = myCustomCategoryTags;
+    if(window.syncCustomCategoryScreens) window.syncCustomCategoryScreens();
     // Keep a small public-facing directory entry so other users can look this
     // account up by email when sending a recipe (their private user doc stays private).
     try{
@@ -3671,26 +3779,13 @@ setTimeout(function(){
     }
     let html = '';
     myCustomCategories.forEach(cat => {
-      const tags = myCustomCategoryTags[cat.id] || {};
-      const keys = Object.keys(tags).filter(k => tags[k]);
-      html += `<div class="fav-group-title">
-        <span>${cat.name}</span>
+      html += `<div class="my-category-row">
+        <button class="my-category-name" onclick="window.closeMyCategories(); window.goTo && window.goTo('mycat-${cat.id}')">${cat.name}</button>
         <span class="cat-group-actions">
           <button class="cat-mini-btn" onclick="window.renameCustomCategory('${cat.id}')" aria-label="Rename">✏️</button>
           <button class="cat-mini-btn" onclick="window.deleteCustomCategory('${cat.id}')" aria-label="Delete">🗑</button>
         </span>
       </div>`;
-      if(!keys.length){
-        html += `<p style="font-size:13px; color:var(--ink-soft); margin:0 0 12px;">No recipes tagged yet.</p>`;
-      } else {
-        keys.forEach(key => {
-          const { recipe } = recipeFromKey(key);
-          if(!recipe) return;
-          html += `<button class="search-result-row" onclick="window.goFromAccountList('${key}', window.closeMyCategories)">
-            <span class="sr-title">${recipe.title}</span>
-          </button>`;
-        });
-      }
     });
     body.innerHTML = html;
   }
@@ -3704,6 +3799,7 @@ setTimeout(function(){
     myCustomCategories.push(cat);
     input.value = '';
     renderMyCategoriesList();
+    if(window.registerCustomCategoryScreen) window.registerCustomCategoryScreen(cat);
     try{
       await updateDoc(userDocRef(currentUser.uid), { customCategories: arrayUnion(cat) });
     } catch(err){
@@ -3719,6 +3815,7 @@ setTimeout(function(){
     if(!newName || !newName.trim() || newName.trim() === cat.name) return;
     cat.name = newName.trim();
     renderMyCategoriesList();
+    if(window.registerCustomCategoryScreen) window.registerCustomCategoryScreen(cat);
     try{
       await updateDoc(userDocRef(currentUser.uid), { customCategories: myCustomCategories });
     } catch(err){
@@ -3732,8 +3829,10 @@ setTimeout(function(){
     if(!cat) return;
     if(!confirm(`Delete the "${cat.name}" category? Recipes tagged in it won't be deleted, just untagged.`)) return;
     myCustomCategories = myCustomCategories.filter(c => c.id !== id);
+    window.myCustomCategories = myCustomCategories;
     delete myCustomCategoryTags[id];
     renderMyCategoriesList();
+    if(window.unregisterCustomCategoryScreen) window.unregisterCustomCategoryScreen(id);
     try{
       await updateDoc(userDocRef(currentUser.uid), {
         customCategories: myCustomCategories,
@@ -3805,6 +3904,7 @@ setTimeout(function(){
     const cat = { id: 'cat_' + Date.now(), name };
     myCustomCategories.push(cat);
     input.value = '';
+    if(window.registerCustomCategoryScreen) window.registerCustomCategoryScreen(cat);
     try{
       await updateDoc(userDocRef(currentUser.uid), { customCategories: arrayUnion(cat) });
     } catch(err){
@@ -3846,6 +3946,7 @@ setTimeout(function(){
     label.className = 'draft-personal-cat-row';
     label.innerHTML = `<input type="checkbox" name="assignPersonal" value="${cat.id}" checked><span>${cat.name}</span>`;
     list.appendChild(label);
+    if(window.registerCustomCategoryScreen) window.registerCustomCategoryScreen(cat);
     try{
       await updateDoc(userDocRef(currentUser.uid), { customCategories: arrayUnion(cat) });
     } catch(err){
@@ -4558,6 +4659,7 @@ setTimeout(function(){
     label.className = 'draft-personal-cat-row';
     label.innerHTML = `<input type="checkbox" name="draftCatPersonal" value="${cat.id}" checked><span>${cat.name}</span>`;
     list.appendChild(label);
+    if(window.registerCustomCategoryScreen) window.registerCustomCategoryScreen(cat);
     try{
       await updateDoc(userDocRef(currentUser.uid), { customCategories: arrayUnion(cat) });
     } catch(err){
@@ -5041,6 +5143,7 @@ Ingredients and steps should read naturally, without numbering, and include real
     label.className = 'draft-personal-cat-row';
     label.innerHTML = `<input type="checkbox" name="ucPersonal" value="${cat.id}" checked><span>${cat.name}</span>`;
     list.appendChild(label);
+    if(window.registerCustomCategoryScreen) window.registerCustomCategoryScreen(cat);
     try{
       await updateDoc(userDocRef(currentUser.uid), { customCategories: arrayUnion(cat) });
     } catch(err){
