@@ -1731,7 +1731,7 @@
   // Version check: compares this page against version.txt (fetched fresh,
   // never cached) and force-reloads if they don't match, so updates reach
   // people without needing a manual cache clear.
-  var PAGE_BUILD_VERSION = "2026-09-19-37";
+  var PAGE_BUILD_VERSION = "2026-09-19-38";
   (function(){
     try{
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
@@ -4586,11 +4586,15 @@ setTimeout(function(){
             <input type="text" id="draftSourceUrl" value="${(p.sourceUrl || '').replace(/"/g, '&quot;')}" placeholder="https://...">
           </div>
         </div>`;
-    const categoryFieldHTML = editingRecipeId ? '' : `
+    const currentFixedForForm = editingRecipeId ? (p.categories || []) : [addRecipeCategory];
+    const currentPersonalForForm = editingRecipeId
+      ? myCustomCategories.filter(cat => myCustomCategoryTags[cat.id] && myCustomCategoryTags[cat.id][editingRecipeId]).map(c => c.id)
+      : [];
+    const categoryFieldHTML = `
       <div class="form-field">
         <label>Categories</label>
         <div id="draftCategoryList">
-          ${categoryChecklistRowsHTML('draftCat', [addRecipeCategory], [])}
+          ${categoryChecklistRowsHTML('draftCat', currentFixedForForm, currentPersonalForForm)}
         </div>
         <div style="display:flex; gap:8px; align-items:flex-end; margin-top:10px;">
           <div style="flex:1;">
@@ -4864,7 +4868,7 @@ Ingredients and steps should read naturally, without numbering, and include real
     let selectedFixedCats = Array.from(document.querySelectorAll('input[name="draftCatFixed"]:checked')).map(el => el.value);
     const selectedPersonalCats = Array.from(document.querySelectorAll('input[name="draftCatPersonal"]:checked')).map(el => el.value);
     // No real category picked (personal-only) — file it under Other rather than blocking the save.
-    if(!editingRecipeId && selectedFixedCats.length === 0){
+    if(selectedFixedCats.length === 0){
       selectedFixedCats = ['other'];
     }
 
@@ -4888,15 +4892,32 @@ Ingredients and steps should read naturally, without numbering, and include real
       if(editingRecipeId){
         const { recipe } = recipeFromKey(editingRecipeId);
         if(!recipe || !recipe._docId) throw new Error('Recipe not found');
-        const updatePayload = { title, servings, time, isMeal, ingredients, steps, visibility, difficulty };
+        const oldFixed = (recipe.categories || []).slice();
+        const updatePayload = {
+          title, servings, time, isMeal, ingredients, steps, visibility, difficulty,
+          categories: selectedFixedCats, category: selectedFixedCats[0]
+        };
         if(source !== null) updatePayload.source = source;
         if(sourceUrl !== null) updatePayload.sourceUrl = sourceUrl;
         await updateDoc(doc(db, "recipes", recipe._docId), updatePayload);
         recipe.title = title; recipe.servings = servings; recipe.time = time;
         recipe.isMeal = isMeal; recipe.ingredients = ingredients; recipe.steps = steps;
         recipe.visibility = visibility; recipe.difficulty = difficulty;
+        recipe.categories = selectedFixedCats;
         if(source !== null) recipe.source = source;
         if(sourceUrl !== null) recipe.sourceUrl = sourceUrl;
+        // Keep RECIPES_DATA's per-category arrays in sync with the new selection
+        oldFixed.forEach(cat => {
+          if(selectedFixedCats.indexOf(cat) !== -1) return;
+          const arr = window.RECIPES_DATA[cat];
+          if(!arr) return;
+          const idx = arr.findIndex(r => r.id === editingRecipeId);
+          if(idx !== -1) arr.splice(idx, 1);
+        });
+        selectedFixedCats.forEach(cat => {
+          if(oldFixed.indexOf(cat) !== -1) return;
+          if(window.RECIPES_DATA[cat]) window.RECIPES_DATA[cat].push(recipe);
+        });
         await syncPersonalCategoryTags(editingRecipeId, selectedPersonalCats);
       } else {
         const primaryCategory = selectedFixedCats[0];
