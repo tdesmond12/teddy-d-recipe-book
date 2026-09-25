@@ -1710,7 +1710,7 @@
   // Version check: compares this page against version.txt (fetched fresh,
   // never cached) and force-reloads if they don't match, so updates reach
   // people without needing a manual cache clear.
-  var PAGE_BUILD_VERSION = "2026-09-19-34";
+  var PAGE_BUILD_VERSION = "2026-09-19-36";
   (function(){
     try{
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
@@ -1847,12 +1847,8 @@
     </div>
     <div class="cart-sheet-body">
       <div class="form-field">
-        <label>Category</label>
-        <select id="categoryAssignSelect" class="search-input"></select>
-      </div>
-      <div class="form-field">
-        <label>Also tag into your personal categories (optional)</label>
-        <div id="categoryAssignPersonalList"></div>
+        <label>Categories</label>
+        <div id="categoryAssignList"></div>
         <div style="display:flex; gap:8px; align-items:flex-end; margin-top:10px;">
           <div style="flex:1;">
             <input type="text" id="categoryAssignNewName" placeholder="Create a new category..." autocomplete="off">
@@ -2182,6 +2178,13 @@
         </span>
         <span class="arrow">&rsaquo;</span>
       </button>
+      <button class="tabcard" onclick="goTo('recipe-other')">
+        <span>
+          <span class="title">Other</span>
+          <span class="desc">Everything that doesn't fit one of the categories above</span>
+        </span>
+        <span class="arrow">&rsaquo;</span>
+      </button>
     </div>
     <button class="create-category-btn" onclick="window.openMyCategories && window.openMyCategories()">＋ Create a Category</button>
   </div>
@@ -2244,6 +2247,11 @@
   <div class="screen" id="screen-recipe-sauces">
     <button class="add-recipe-btn" onclick="window.openAddRecipe && window.openAddRecipe('sauces')">+ Add Recipe</button>
     <div id="recipe-sauces-content"></div>
+  </div>
+
+  <div class="screen" id="screen-recipe-other">
+    <button class="add-recipe-btn" onclick="window.openAddRecipe && window.openAddRecipe('other')">+ Add Recipe</button>
+    <div id="recipe-other-content"></div>
   </div>
 
   <!-- SCREEN: SHOPPING LIST -->
@@ -2362,7 +2370,8 @@ const RECIPES_DATA = {
   italian: [],
   mexican: [],
   american: [],
-  sauces: []
+  sauces: [],
+  other: []
 };
 window.RECIPES_DATA = RECIPES_DATA;
 
@@ -2623,7 +2632,8 @@ function categoryLabel(cat){
     "italian": "Italian",
     "mexican": "Mexican",
     "american": "American",
-    "sauces": "Sauces"
+    "sauces": "Sauces",
+    "other": "Other"
   };
   return map[cat] || cat;
 }
@@ -3165,6 +3175,7 @@ const ROUTES = {
   "recipe-mexican":       { label: "Mexican", parent: "recipes" },
   "recipe-american":      { label: "American", parent: "recipes" },
   "recipe-sauces":        { label: "Sauces", parent: "recipes" },
+  "recipe-other":         { label: "Other", parent: "recipes" },
   shopping:  { label: "Shopping List", parent: "home" }
 };
 
@@ -3175,7 +3186,8 @@ const RECIPE_SCREEN_MAP = {
   'recipe-italian': 'italian',
   'recipe-mexican': 'mexican',
   'recipe-american': 'american',
-  'recipe-sauces': 'sauces'
+  'recipe-sauces': 'sauces',
+  'recipe-other': 'other'
 };
 window.RECIPE_SCREEN_MAP = RECIPE_SCREEN_MAP;
 
@@ -3807,44 +3819,18 @@ setTimeout(function(){
   /* ---------- Category assignment (shown when copying a recipe) ---------- */
 
   let categoryAssignCallback = null;
-  let categoryAssignPersonalSelected = new Set();
 
   window.openCategoryAssign = function(defaultCategory, onConfirm){
     categoryAssignCallback = onConfirm;
-    categoryAssignPersonalSelected = new Set();
-    const select = document.getElementById('categoryAssignSelect');
-    select.innerHTML = ALL_CATEGORIES.map(c =>
-      `<option value="${c}" ${c === defaultCategory ? 'selected' : ''}>${window.categoryLabel(c)}</option>`
-    ).join('');
+    document.getElementById('categoryAssignList').innerHTML =
+      categoryChecklistRowsHTML('assign', [defaultCategory], []);
     document.getElementById('categoryAssignNewName').value = '';
-    renderCategoryAssignPersonalList();
     document.getElementById('categoryAssignOverlay').classList.add('open');
   };
 
   window.closeCategoryAssign = function(){
     document.getElementById('categoryAssignOverlay').classList.remove('open');
     categoryAssignCallback = null;
-  };
-
-  function renderCategoryAssignPersonalList(){
-    const body = document.getElementById('categoryAssignPersonalList');
-    if(!myCustomCategories.length){
-      body.innerHTML = `<p style="font-size:13px; color:var(--ink-soft); margin:6px 0 0;">You don't have any personal categories yet — create one below.</p>`;
-      return;
-    }
-    body.innerHTML = `<div class="cat-picker-list">` + myCustomCategories.map(cat => {
-      const checked = categoryAssignPersonalSelected.has(cat.id);
-      return `<button type="button" class="cat-picker-row ${checked ? 'checked' : ''}" onclick="window.toggleCategoryAssignPersonal('${cat.id}')">
-        <span class="cat-picker-check">${checked ? '✓' : ''}</span>
-        <span>${cat.name}</span>
-      </button>`;
-    }).join('') + `</div>`;
-  }
-
-  window.toggleCategoryAssignPersonal = function(catId){
-    if(categoryAssignPersonalSelected.has(catId)) categoryAssignPersonalSelected.delete(catId);
-    else categoryAssignPersonalSelected.add(catId);
-    renderCategoryAssignPersonalList();
   };
 
   window.addCategoryFromAssign = async function(){
@@ -3854,9 +3840,12 @@ setTimeout(function(){
     if(!name) return;
     const cat = { id: 'cat_' + Date.now(), name };
     myCustomCategories.push(cat);
-    categoryAssignPersonalSelected.add(cat.id);
     input.value = '';
-    renderCategoryAssignPersonalList();
+    const list = document.getElementById('categoryAssignList');
+    const label = document.createElement('label');
+    label.className = 'draft-personal-cat-row';
+    label.innerHTML = `<input type="checkbox" name="assignPersonal" value="${cat.id}" checked><span>${cat.name}</span>`;
+    list.appendChild(label);
     try{
       await updateDoc(userDocRef(currentUser.uid), { customCategories: arrayUnion(cat) });
     } catch(err){
@@ -3866,12 +3855,13 @@ setTimeout(function(){
   };
 
   window.confirmCategoryAssign = function(){
-    const select = document.getElementById('categoryAssignSelect');
-    const category = select.value;
-    const personalIds = Array.from(categoryAssignPersonalSelected);
+    let fixedIds = Array.from(document.querySelectorAll('#categoryAssignList input[name="assignFixed"]:checked')).map(el => el.value);
+    const personalIds = Array.from(document.querySelectorAll('#categoryAssignList input[name="assignPersonal"]:checked')).map(el => el.value);
+    // No real category picked (personal-only) — file it under Other rather than blocking the save.
+    if(fixedIds.length === 0) fixedIds = ['other'];
     const cb = categoryAssignCallback;
     window.closeCategoryAssign();
-    if(cb) cb(category, personalIds);
+    if(cb) cb(fixedIds, personalIds);
   };
 
   async function syncPersonalCategoryTags(key, selectedIds){
@@ -4255,19 +4245,20 @@ setTimeout(function(){
     if(!item) return;
     const r = item.recipe || {};
     const defaultCategory = (r.category && window.RECIPES_DATA[r.category]) ? r.category : 'american';
-    window.openCategoryAssign(defaultCategory, (chosenCategory, personalIds) => {
-      performCopyMailItemToMine(mailId, chosenCategory, personalIds);
+    window.openCategoryAssign(defaultCategory, (fixedCats, personalIds) => {
+      performCopyMailItemToMine(mailId, fixedCats, personalIds);
     });
   };
 
-  async function performCopyMailItemToMine(mailId, category, personalIds){
+  async function performCopyMailItemToMine(mailId, fixedCats, personalIds){
     const item = (window._mailboxItems || []).find(m => m.id === mailId);
     if(!item) return;
     const r = item.recipe || {};
+    const primaryCategory = fixedCats[0];
     try{
       const docRef = await addDoc(collection(db, "recipes"), {
-        category,
-        categories: [category],
+        category: primaryCategory,
+        categories: fixedCats,
         title: r.title, servings: r.servings || '', time: r.time || '',
         isMeal: !!r.isMeal, ingredients: r.ingredients || [], steps: r.steps || [],
         source: r.source || '', sourceUrl: r.sourceUrl || '',
@@ -4280,20 +4271,23 @@ setTimeout(function(){
         originalAddedByEmail: r.originalAddedByEmail || '',
         createdAt: serverTimestamp()
       });
-      const newKey = category + ':f' + docRef.id;
-      window.RECIPES_DATA[category].push({
+      const newKey = primaryCategory + ':f' + docRef.id;
+      const newRecipe = {
         id: newKey,
         title: r.title, servings: r.servings || '', time: r.time || '',
         isMeal: !!r.isMeal, ingredients: (r.ingredients || []).slice(), steps: (r.steps || []).slice(),
         source: r.source || '', sourceUrl: r.sourceUrl || '',
         difficulty: r.difficulty || 0,
         visibility: 'private', ownerUid: currentUser.uid,
-        categories: [category],
+        categories: fixedCats,
         _docId: docRef.id,
         _addedByName: currentUser.displayName || '',
         _addedByEmail: currentUser.email || '',
         _originalAddedByName: r.originalAddedByName || '',
         _originalAddedByEmail: r.originalAddedByEmail || ''
+      };
+      fixedCats.forEach(cat => {
+        if(window.RECIPES_DATA[cat]) window.RECIPES_DATA[cat].push(newRecipe);
       });
       await syncPersonalCategoryTags(newKey, personalIds);
       alert(`"${r.title}" was copied to your recipes as private — edit it anytime from there.`);
@@ -4493,27 +4487,9 @@ setTimeout(function(){
         </div>`;
     const categoryFieldHTML = editingRecipeId ? '' : `
       <div class="form-field">
-        <label>Category</label>
-        <select id="draftCategory" class="search-input">
-          ${ALL_CATEGORIES.map(c => `<option value="${c}" ${c === addRecipeCategory ? 'selected' : ''}>${window.categoryLabel(c)}</option>`).join('')}
-        </select>
-      </div>`;
-    const personalCatChecked = new Set();
-    if(editingRecipeId){
-      myCustomCategories.forEach(cat => {
-        if(myCustomCategoryTags[cat.id] && myCustomCategoryTags[cat.id][editingRecipeId]) personalCatChecked.add(cat.id);
-      });
-    }
-    const personalCategoryHTML = `
-      <div class="form-field">
-        <label>Personal categories (optional)</label>
-        <div id="draftPersonalCatList">
-          ${myCustomCategories.length ? myCustomCategories.map(cat => `
-            <label class="draft-personal-cat-row">
-              <input type="checkbox" name="draftPersonalCat" value="${cat.id}" ${personalCatChecked.has(cat.id) ? 'checked' : ''}>
-              <span>${cat.name}</span>
-            </label>
-          `).join('') : `<p style="font-size:13px; color:var(--ink-soft); margin:4px 0 0;">You don't have any personal categories yet.</p>`}
+        <label>Categories</label>
+        <div id="draftCategoryList">
+          ${categoryChecklistRowsHTML('draftCat', [addRecipeCategory], [])}
         </div>
         <div style="display:flex; gap:8px; align-items:flex-end; margin-top:10px;">
           <div style="flex:1;">
@@ -4565,7 +4541,6 @@ setTimeout(function(){
         </div>
         <input type="hidden" id="draftVisibility" value="${p.visibility === 'private' ? 'private' : 'public'}">
       </div>
-      ${personalCategoryHTML}
       <button class="form-save-btn" onclick="window.submitAddRecipe()">${editingRecipeId ? 'Save Changes' : 'Save Recipe'}</button>
     `;
   }
@@ -4578,12 +4553,10 @@ setTimeout(function(){
     const cat = { id: 'cat_' + Date.now(), name };
     myCustomCategories.push(cat);
     input.value = '';
-    const list = document.getElementById('draftPersonalCatList');
-    const emptyMsg = list.querySelector('p');
-    if(emptyMsg) emptyMsg.remove();
+    const list = document.getElementById('draftCategoryList');
     const label = document.createElement('label');
     label.className = 'draft-personal-cat-row';
-    label.innerHTML = `<input type="checkbox" name="draftPersonalCat" value="${cat.id}" checked><span>${cat.name}</span>`;
+    label.innerHTML = `<input type="checkbox" name="draftCatPersonal" value="${cat.id}" checked><span>${cat.name}</span>`;
     list.appendChild(label);
     try{
       await updateDoc(userDocRef(currentUser.uid), { customCategories: arrayUnion(cat) });
@@ -4786,7 +4759,12 @@ Ingredients and steps should read naturally, without numbering, and include real
     const difficulty = parseInt(document.getElementById('draftDifficulty').value, 10) || 0;
     const visEl = document.getElementById('draftVisibility');
     const visibility = visEl && visEl.value === 'private' ? 'private' : 'public';
-    const selectedPersonalCats = Array.from(document.querySelectorAll('input[name="draftPersonalCat"]:checked')).map(el => el.value);
+    let selectedFixedCats = Array.from(document.querySelectorAll('input[name="draftCatFixed"]:checked')).map(el => el.value);
+    const selectedPersonalCats = Array.from(document.querySelectorAll('input[name="draftCatPersonal"]:checked')).map(el => el.value);
+    // No real category picked (personal-only) — file it under Other rather than blocking the save.
+    if(!editingRecipeId && selectedFixedCats.length === 0){
+      selectedFixedCats = ['other'];
+    }
 
     const flaggedField = findProfaneField({
       'Title': title,
@@ -4819,11 +4797,10 @@ Ingredients and steps should read naturally, without numbering, and include real
         if(sourceUrl !== null) recipe.sourceUrl = sourceUrl;
         await syncPersonalCategoryTags(editingRecipeId, selectedPersonalCats);
       } else {
-        const categoryEl = document.getElementById('draftCategory');
-        const chosenCategory = categoryEl ? categoryEl.value : addRecipeCategory;
+        const primaryCategory = selectedFixedCats[0];
         const docRef = await addDoc(collection(db, "recipes"), {
-          category: chosenCategory,
-          categories: [chosenCategory],
+          category: primaryCategory,
+          categories: selectedFixedCats,
           title, servings, time, isMeal, ingredients, steps, visibility, difficulty,
           source: source || '', sourceUrl: sourceUrl || '',
           addedBy: currentUser.uid,
@@ -4832,16 +4809,19 @@ Ingredients and steps should read naturally, without numbering, and include real
           createdAt: serverTimestamp()
         });
 
-        const newKey = chosenCategory + ':f' + docRef.id;
-        window.RECIPES_DATA[chosenCategory].push({
+        const newKey = primaryCategory + ':f' + docRef.id;
+        const newRecipe = {
           id: newKey,
           title, servings, time, isMeal, ingredients, steps, difficulty,
           source: source || '', sourceUrl: sourceUrl || '',
           visibility, ownerUid: currentUser.uid,
-          categories: [chosenCategory],
+          categories: selectedFixedCats,
           _docId: docRef.id,
           _addedByName: currentUser.displayName || '',
           _addedByEmail: currentUser.email || ''
+        };
+        selectedFixedCats.forEach(cat => {
+          if(window.RECIPES_DATA[cat]) window.RECIPES_DATA[cat].push(newRecipe);
         });
         await syncPersonalCategoryTags(newKey, selectedPersonalCats);
       }
@@ -4936,12 +4916,12 @@ Ingredients and steps should read naturally, without numbering, and include real
     if(!currentUser){ window.signInGoogle(); return; }
     const { category, recipe } = recipeFromKey(id);
     if(!recipe) return;
-    window.openCategoryAssign(category, (chosenCategory, personalIds) => {
-      performCopyRecipeToMine(id, chosenCategory, personalIds);
+    window.openCategoryAssign(category, (fixedCats, personalIds) => {
+      performCopyRecipeToMine(id, fixedCats, personalIds);
     });
   };
 
-  async function performCopyRecipeToMine(id, category, personalIds){
+  async function performCopyRecipeToMine(id, fixedCats, personalIds){
     const { recipe } = recipeFromKey(id);
     if(!recipe) return;
     // Whoever first added this recipe to the app keeps credit, even through
@@ -4949,10 +4929,11 @@ Ingredients and steps should read naturally, without numbering, and include real
     // if this is already a copy, otherwise the source recipe's own adder becomes "original".
     const originalAddedByName = recipe._originalAddedByName || recipe._addedByName || '';
     const originalAddedByEmail = recipe._originalAddedByEmail || recipe._addedByEmail || '';
+    const primaryCategory = fixedCats[0];
     try{
       const docRef = await addDoc(collection(db, "recipes"), {
-        category,
-        categories: [category],
+        category: primaryCategory,
+        categories: fixedCats,
         title: recipe.title, servings: recipe.servings, time: recipe.time,
         isMeal: recipe.isMeal, ingredients: recipe.ingredients, steps: recipe.steps,
         source: recipe.source || '', sourceUrl: recipe.sourceUrl || '',
@@ -4964,20 +4945,23 @@ Ingredients and steps should read naturally, without numbering, and include real
         originalAddedByName, originalAddedByEmail,
         createdAt: serverTimestamp()
       });
-      const newKey = category + ':f' + docRef.id;
-      window.RECIPES_DATA[category].push({
+      const newKey = primaryCategory + ':f' + docRef.id;
+      const newRecipe = {
         id: newKey,
         title: recipe.title, servings: recipe.servings, time: recipe.time,
         isMeal: recipe.isMeal, ingredients: recipe.ingredients.slice(), steps: recipe.steps.slice(),
         source: recipe.source || '', sourceUrl: recipe.sourceUrl || '',
         difficulty: recipe.difficulty || 0,
         visibility: 'private', ownerUid: currentUser.uid,
-        categories: [category],
+        categories: fixedCats,
         _docId: docRef.id,
         _addedByName: currentUser.displayName || '',
         _addedByEmail: currentUser.email || '',
         _originalAddedByName: originalAddedByName,
         _originalAddedByEmail: originalAddedByEmail
+      };
+      fixedCats.forEach(cat => {
+        if(window.RECIPES_DATA[cat]) window.RECIPES_DATA[cat].push(newRecipe);
       });
       await syncPersonalCategoryTags(newKey, personalIds);
       refreshActiveRecipeScreen();
@@ -4990,49 +4974,45 @@ Ingredients and steps should read naturally, without numbering, and include real
 
   /* ---------- Update Category (change primary, or add to more) ---------- */
 
-  const ALL_CATEGORIES = ["heart-healthy", "grilled", "smoker", "italian", "mexican", "american", "sauces"];
+  const ALL_CATEGORIES = ["heart-healthy", "grilled", "smoker", "italian", "mexican", "american", "sauces", "other"];
+
+  // One unified list of checkboxes — built-in categories and personal categories
+  // rendered identically, side by side, with no visible split between them.
+  function categoryChecklistRowsHTML(namePrefix, selectedFixed, selectedPersonal){
+    const fixedRows = ALL_CATEGORIES.map(c => `
+      <label class="draft-personal-cat-row">
+        <input type="checkbox" name="${namePrefix}Fixed" value="${c}" ${selectedFixed.includes(c) ? 'checked' : ''}>
+        <span>${window.categoryLabel(c)}</span>
+      </label>
+    `).join('');
+    const personalRows = myCustomCategories.map(cat => `
+      <label class="draft-personal-cat-row">
+        <input type="checkbox" name="${namePrefix}Personal" value="${cat.id}" ${selectedPersonal.includes(cat.id) ? 'checked' : ''}>
+        <span>${cat.name}</span>
+      </label>
+    `).join('');
+    return fixedRows + personalRows;
+  }
 
   function updateCategoryBodyHTML(recipe){
-    const current = recipe.categories || [];
-    const label = window.categoryLabel || (c => c);
-    const canRemove = current.length > 1;
-    const changeOptions = ALL_CATEGORIES.map(c =>
-      `<option value="${c}" ${current[0] === c ? 'selected' : ''}>${label(c)}</option>`
-    ).join('');
-    const addableCats = ALL_CATEGORIES.filter(c => current.indexOf(c) === -1);
-    const addCheckboxes = addableCats.length === 0
-      ? `<p style="font-size:13.5px; color:var(--ink-soft);">Already showing in every category.</p>`
-      : addableCats.map(c => `
-        <div class="form-checkbox-row">
-          <input type="checkbox" class="uc-extra-cat" value="${c}" id="uc-${c}">
-          <label for="uc-${c}" style="margin:0;">${label(c)}</label>
-        </div>
-      `).join('');
-    const currentCatRows = current.map(c => `
-      <div class="current-cat-row">
-        <span>${label(c)}</span>
-        <button class="cat-remove-btn" ${canRemove ? '' : 'disabled'} onclick="window.submitRemoveCategory('${recipe.id}', '${c}')">Remove</button>
-      </div>
-    `).join('');
-
+    const currentFixed = (recipe.categories || []).filter(c => ALL_CATEGORIES.indexOf(c) !== -1);
+    const currentPersonal = myCustomCategories
+      .filter(cat => myCustomCategoryTags[cat.id] && myCustomCategoryTags[cat.id][recipe.id])
+      .map(cat => cat.id);
     return `
       <div class="form-field">
-        <label>Currently shown in</label>
-        <div class="current-cat-list">${currentCatRows}</div>
-        ${!canRemove ? `<p style="font-size:12px; color:var(--ink-soft); margin-top:6px;">A recipe needs at least one category — add another below before removing this one.</p>` : ''}
+        <label>Categories</label>
+        <div id="ucCategoryList">
+          ${categoryChecklistRowsHTML('uc', currentFixed, currentPersonal)}
+        </div>
+        <div style="display:flex; gap:8px; align-items:flex-end; margin-top:10px;">
+          <div style="flex:1;">
+            <input type="text" id="ucNewPersonalCat" placeholder="Create a new category..." autocomplete="off">
+          </div>
+          <button type="button" class="form-save-btn" style="width:auto; padding:11px 16px; margin:0;" onclick="window.addCategoryFromUpdateSheet('${recipe.id}')">Add</button>
+        </div>
       </div>
-      <div class="form-field" style="margin-top:24px; padding-top:20px; border-top:1px solid var(--line);">
-        <label>Change primary category</label>
-        <select id="ucNewPrimary" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--line); font-size:14.5px;">
-          ${changeOptions}
-        </select>
-        <button class="form-save-btn" style="margin-top:10px;" onclick="window.submitChangeCategory('${recipe.id}')">Change Category</button>
-      </div>
-      <div class="form-field" style="margin-top:24px; padding-top:20px; border-top:1px solid var(--line);">
-        <label>Also show this recipe in additional categories</label>
-        ${addCheckboxes}
-        ${addableCats.length > 0 ? `<button class="form-save-btn" style="margin-top:10px;" onclick="window.submitAddCategories('${recipe.id}')">Add to Selected Categories</button>` : ''}
-      </div>
+      <button class="form-save-btn" onclick="window.submitUpdateCategories('${recipe.id}')">Save Categories</button>
     `;
   }
 
@@ -5048,81 +5028,56 @@ Ingredients and steps should read naturally, without numbering, and include real
     document.getElementById('updateCategoryOverlay').classList.remove('open');
   };
 
-  window.submitChangeCategory = async function(id){
+  window.addCategoryFromUpdateSheet = async function(id){
+    if(!currentUser){ window.signInGoogle(); return; }
+    const input = document.getElementById('ucNewPersonalCat');
+    const name = (input.value || '').trim();
+    if(!name) return;
+    const cat = { id: 'cat_' + Date.now(), name };
+    myCustomCategories.push(cat);
+    input.value = '';
+    const list = document.getElementById('ucCategoryList');
+    const label = document.createElement('label');
+    label.className = 'draft-personal-cat-row';
+    label.innerHTML = `<input type="checkbox" name="ucPersonal" value="${cat.id}" checked><span>${cat.name}</span>`;
+    list.appendChild(label);
+    try{
+      await updateDoc(userDocRef(currentUser.uid), { customCategories: arrayUnion(cat) });
+    } catch(err){
+      console.error('Create category failed:', err);
+      alert("Couldn't create that category — please try again.");
+    }
+  };
+
+  window.submitUpdateCategories = async function(id){
     const { recipe } = recipeFromKey(id);
     if(!recipe || !currentUser || recipe.ownerUid !== currentUser.uid || !recipe._docId) return;
-    const newCat = document.getElementById('ucNewPrimary').value;
-    const oldCats = (recipe.categories || []).slice();
-    if(oldCats.length === 1 && oldCats[0] === newCat){ window.closeUpdateCategory(); return; }
+    let newFixed = Array.from(document.querySelectorAll('#ucCategoryList input[name="ucFixed"]:checked')).map(el => el.value);
+    const newPersonal = Array.from(document.querySelectorAll('#ucCategoryList input[name="ucPersonal"]:checked')).map(el => el.value);
+    // No real category picked (personal-only) — file it under Other rather than blocking the save.
+    if(newFixed.length === 0) newFixed = ['other'];
+    const oldFixed = (recipe.categories || []).slice();
     try{
-      await updateDoc(doc(db, "recipes", recipe._docId), { categories: [newCat], category: newCat });
-      oldCats.forEach(cat => {
+      await updateDoc(doc(db, "recipes", recipe._docId), { categories: newFixed, category: newFixed[0] });
+      // Remove from any category arrays no longer selected, add to newly selected ones
+      oldFixed.forEach(cat => {
+        if(newFixed.indexOf(cat) !== -1) return;
         const arr = window.RECIPES_DATA[cat];
         if(!arr) return;
         const idx = arr.findIndex(r => r.id === id);
         if(idx !== -1) arr.splice(idx, 1);
       });
-      recipe.categories = [newCat];
-      if(window.RECIPES_DATA[newCat]) window.RECIPES_DATA[newCat].push(recipe);
-      window.closeUpdateCategory();
-      refreshActiveRecipeScreen();
-    } catch(err){
-      console.error('Change category failed:', err);
-      alert("Couldn't change category — please try again.");
-    }
-  };
-
-  window.submitAddCategories = async function(id){
-    const { recipe } = recipeFromKey(id);
-    if(!recipe || !currentUser || recipe.ownerUid !== currentUser.uid || !recipe._docId) return;
-    const checked = Array.from(document.querySelectorAll('.uc-extra-cat:checked')).map(el => el.value);
-    if(checked.length === 0){ window.closeUpdateCategory(); return; }
-    const current = recipe.categories || [];
-    const newCategories = current.slice();
-    checked.forEach(c => { if(newCategories.indexOf(c) === -1) newCategories.push(c); });
-    try{
-      await updateDoc(doc(db, "recipes", recipe._docId), { categories: newCategories });
-      checked.forEach(c => {
-        if(current.indexOf(c) === -1 && window.RECIPES_DATA[c]){
-          window.RECIPES_DATA[c].push(recipe);
-        }
+      newFixed.forEach(cat => {
+        if(oldFixed.indexOf(cat) !== -1) return;
+        if(window.RECIPES_DATA[cat]) window.RECIPES_DATA[cat].push(recipe);
       });
-      recipe.categories = newCategories;
+      recipe.categories = newFixed;
+      await syncPersonalCategoryTags(id, newPersonal);
       window.closeUpdateCategory();
       refreshActiveRecipeScreen();
     } catch(err){
-      console.error('Add categories failed:', err);
+      console.error('Update categories failed:', err);
       alert("Couldn't update categories — please try again.");
-    }
-  };
-
-  window.submitRemoveCategory = async function(id, catToRemove){
-    const { recipe } = recipeFromKey(id);
-    if(!recipe || !currentUser || recipe.ownerUid !== currentUser.uid || !recipe._docId) return;
-    const current = recipe.categories || [];
-    // Validation: a recipe must always keep at least one category.
-    if(current.length <= 1){
-      alert("A recipe needs to stay in at least one category — add another before removing this one.");
-      return;
-    }
-    const newCategories = current.filter(c => c !== catToRemove);
-    try{
-      await updateDoc(doc(db, "recipes", recipe._docId), {
-        categories: newCategories,
-        category: newCategories[0]
-      });
-      const arr = window.RECIPES_DATA[catToRemove];
-      if(arr){
-        const idx = arr.findIndex(r => r.id === id);
-        if(idx !== -1) arr.splice(idx, 1);
-      }
-      recipe.categories = newCategories;
-      // Re-render the sheet in place so the list and Remove-button state update live
-      document.getElementById('updateCategorySheetBody').innerHTML = updateCategoryBodyHTML(recipe);
-      refreshActiveRecipeScreen();
-    } catch(err){
-      console.error('Remove category failed:', err);
-      alert("Couldn't remove that category — please try again.");
     }
   };
 
